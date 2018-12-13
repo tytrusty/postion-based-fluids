@@ -16,6 +16,24 @@
 #include "debuggl.h"
 #include "config.h"
 
+#include <glm/glm.hpp>
+
+//---------------------------------------//
+// Particle Tutorial
+struct particle 
+{
+    glm::vec3 pos, vel;
+    unsigned char r,g,b,a;
+    float size;
+
+};
+const int nparticles = 1000;
+particle particle_container[nparticles];
+static GLfloat* particle_position_data = new GLfloat[nparticles*4];
+static GLubyte* particle_color_data    = new GLubyte[nparticles*4];
+//---------------------------------------//
+
+
 static void error_callback(int error, const char* description)
 {
     fprintf(stderr, "Error %d: %s\n", error, description);
@@ -36,6 +54,14 @@ const char* fragment_shader =
 ;
 const char* floor_fragment_shader =
 #include "shaders/floor.frag"
+;
+
+const char* particle_vertex_shader =
+#include "shaders/particle.vert"
+;
+
+const char* particle_fragment_shader =
+#include "shaders/particle.frag"
 ;
 
 GLFWwindow* init_glefw()
@@ -75,6 +101,13 @@ void create_floor(std::vector<glm::vec4>& floor_vertices, std::vector<glm::uvec3
 	floor_faces.push_back(glm::uvec3(2, 3, 0));
 }
 
+static const GLfloat g_vertex_buffer_data[] = {
+    -0.5f, -0.5f, 0.0f,
+    0.5f, -0.5f, 0.0f,
+    -0.5f, 0.5f, 0.0f,
+    0.5f, 0.5f, 0.0f,
+};
+
 
 int main(int, char**)
 {
@@ -94,7 +127,6 @@ int main(int, char**)
     std::vector<glm::vec4> floor_vertices;
     std::vector<glm::uvec3> floor_faces;
     create_floor(floor_vertices, floor_faces);
-
 
 	// Setup uniforms
     std::function<const glm::mat4*()> model_data = [&mats]() {
@@ -124,6 +156,46 @@ int main(int, char**)
 			floor_pass_input,
 			{ vertex_shader, geometry_shader, floor_fragment_shader},
 			{ floor_model, std_view, std_proj, std_light },
+			{ "fragment_color" }
+			);
+
+    glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
+    float step = 0.1f;
+    for (int i = 0; i < nparticles; ++i)
+    {
+        particle_container[i].pos = start;
+        particle_container[i].r = rand() % 256;
+        particle_container[i].g = rand() % 256;
+        particle_container[i].b = rand() % 256;
+        particle_container[i].a = (rand() % 256)/3;
+        particle_container[i].size = 0.2f;// (rand()%1000)/2000.0f + 0.1f;
+
+        particle_position_data[4*i+0] = start.x;
+        particle_position_data[4*i+1] = start.y;
+        particle_position_data[4*i+2] = start.z;
+        particle_position_data[4*i+3] = particle_container[i].size;;
+
+        particle_color_data[4*i+0] = particle_container[i].r;
+        particle_color_data[4*i+1] = particle_container[i].g;
+        particle_color_data[4*i+2] = particle_container[i].b;
+        particle_color_data[4*i+3] = particle_container[i].a;
+
+        start.x += step;
+        start.y += step;
+    }
+
+
+    // Particle pass
+    RenderDataInput particle_pass_input;
+    particle_pass_input.assign(0, "vertex_position", g_vertex_buffer_data, sizeof(g_vertex_buffer_data), 3, GL_FLOAT);
+    particle_pass_input.assign(1, "particle_position", particle_position_data,
+            nparticles*4*sizeof(GLfloat), 4, GL_FLOAT);
+    particle_pass_input.assign(2, "particle_color", particle_color_data,
+            nparticles*4*sizeof(GLubyte), 4, GL_UNSIGNED_INT);
+	RenderPass particle_pass(-1,
+			particle_pass_input,
+			{ particle_vertex_shader, nullptr, particle_fragment_shader},
+			{ std_view, std_proj},
 			{ "fragment_color" }
 			);
 
@@ -178,14 +250,16 @@ int main(int, char**)
 		mats = gui.getMatrixPointers();
 
 		// Render
-        
-
 		floor_pass.setup();
-		// Draw our triangles.
 		CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
-		ImGui::Render();
+        particle_pass.setup();
+        glVertexAttribDivisor(0,0);
+        glVertexAttribDivisor(1,1);
+        glVertexAttribDivisor(2,1);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, nparticles);
 
+		ImGui::Render();
 
         glfwPollEvents();
         glfwSwapBuffers(window);
