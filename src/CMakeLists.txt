@@ -2,7 +2,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 SET(pwd ${CMAKE_CURRENT_LIST_DIR})
-UNSET(src)
+SET(src "")
 
 AUX_SOURCE_DIRECTORY(${pwd} src)
 
@@ -27,7 +27,7 @@ include_directories(${OPENGL_INCLUDE_DIRS})
 find_package(GLEW REQUIRED)
 include_directories(${GLEW_INCLUDE_DIRS})
 
-add_executable(${APP_TARGET} main.cpp)
+add_executable(${APP_TARGET} ${src})
 target_link_libraries(
         ${APP_TARGET}
         glfw
