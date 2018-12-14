@@ -6,7 +6,7 @@ in vec3 particle_position;
 in vec4 particle_color;
 
 out vec2 UV;
-out vec4 color;
+flat out vec4 color;
 
 uniform mat4 projection;
 uniform mat4 view;

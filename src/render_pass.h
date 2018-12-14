@@ -36,13 +36,15 @@ public:
 	 *      nelements: number of elements
 	 *      element_length: element dimension, e.g. for vec3 it's 3
 	 *      element_type: GL_FLOAT or GL_UNSIGNED_INT
+     *      normalize: data normalization boolean
 	 */
 	void assign(int position,
 	            const std::string& name,
 	            const void *data,
 	            size_t nelements,
 	            size_t element_length,
-	            int element_type);
+	            int element_type,
+                bool normalize);
 	/*
 	 * assign_index: assign the index buffer for vertices
 	 * This will bind the data to GL_ELEMENT_ARRAY_BUFFER

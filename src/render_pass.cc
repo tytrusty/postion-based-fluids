@@ -14,6 +14,7 @@ struct RenderInputMeta {
     size_t nelements = 0;
     size_t element_length = 0;
     int element_type = 0;
+    bool normalize = false;
 
     size_t getElementSize() const; // simple check: return 12 (3 * 4 bytes) for float3 
     RenderInputMeta();
@@ -22,7 +23,8 @@ struct RenderInputMeta {
                 const void *_data,
                 size_t _nelements,
                 size_t _element_length,
-                int _element_type);
+                int _element_type,
+                bool _normalize);
     bool isInteger() const;
 };
 
@@ -40,10 +42,15 @@ RenderInputMeta::RenderInputMeta(int _position,
                 const void *_data,
                 size_t _nelements,
                 size_t _element_length,
-                int _element_type)
-    :position(_position), name(_name), data(_data),
-    nelements(_nelements), element_length(_element_length),
-    element_type(_element_type)
+                int _element_type,
+                bool _normalize)
+    : position(_position)
+    , name(_name)
+    , data(_data)
+    , nelements(_nelements)
+    , element_length(_element_length)
+    , element_type(_element_type)
+    , normalize(_normalize)
 {
 }
 
@@ -101,7 +108,7 @@ RenderPass::RenderPass(int vao, // -1: create new VAO, otherwise use given VAO
             CHECK_GL_ERROR(glVertexAttribPointer(meta.position,
                         meta.element_length,
                         meta.element_type,
-                        GL_FALSE, 0, 0));
+                        meta.normalize, 0, 0));
         }
         CHECK_GL_ERROR(glEnableVertexAttribArray(meta.position));
         // ... because we need program to bind location
@@ -333,15 +340,16 @@ void RenderDataInput::assign(int position,
                              const void *data,
                              size_t nelements,
                              size_t element_length,
-                             int element_type)
+                             int element_type, 
+                             bool normalize)
 {
-    meta_.emplace_back(position, name, data, nelements, element_length, element_type);
+    meta_.emplace_back(position, name, data, nelements, element_length, element_type, normalize);
 }
 
 void RenderDataInput::assignIndex(const void *data, size_t nelements, size_t element_length)
 {
     has_index_ = true;
-    *index_meta_ = {-1, "", data, nelements, element_length, GL_UNSIGNED_INT};
+    *index_meta_ = {-1, "", data, nelements, element_length, GL_UNSIGNED_INT, GL_FALSE};
 }
 
 int RenderDataInput::getNBuffers() const
@@ -365,6 +373,8 @@ size_t RenderInputMeta::getElementSize() const
         element_size = 4;
     else if (element_type == GL_INT)
         element_size = 4;
+    else if (element_type == GL_UNSIGNED_BYTE)
+        element_size = 1;
     return element_size * element_length;
 }
 

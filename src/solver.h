@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 
+#include "config.h"
+
 class HashGrid;
 
 struct Particle
@@ -20,22 +22,28 @@ class Solver
 {
 public:
 
-    Solver(/* config* c */);
+    Solver(std::shared_ptr<Config>);
 
-    void step(std::vector<Particle>& particles);
     void step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> hash_grid);
 
 private:
     /* SPH Kernels */
     float poly6_kernel(const glm::vec3& r);
     glm::vec3 spiky_grad_kernel(const glm::vec3& r);
+    void update_params();
 
     /* Set SPH Kernels scale factors */
-    void set_poly6_factor() { m_poly6_factor = 315.0f/(64.0f*M_PI*std::pow(m_h,9)); }
-    void set_spiky_factor() { m_spiky_factor = -45.0f/(M_PI*std::pow(m_h,6)); }
+    static float get_poly6_factor(float h) { return 315.0f/(64.0f*M_PI*std::pow(h,9)); }
+    static float get_spiky_factor(float h) { return -45.0f/(M_PI*std::pow(h,6)); }
 
-    float m_h;  // smoothing radius
-    float m_h2; // squared
+    std::shared_ptr<Config> m_config;
+    float m_kernel_radius;
+    float m_rest_density; 
+    float m_rest_density2; 
+    float m_particle_mass;
+    float m_cfm_epsilon;  
+    float m_h;  
+    float m_h2; 
     float m_poly6_factor; 
     float m_spiky_factor;
     float m_timestep;

@@ -7,29 +7,36 @@
 
 #include <iostream>
 
-Solver::Solver()
+Solver::Solver(std::shared_ptr<Config> config)
+    : m_config(config)
 {
-    m_h = 1.0f;
-    m_h2 = m_h*m_h;
-    set_poly6_factor();
-    set_spiky_factor();
-    m_timestep = 0.001;
-    m_solver_iters = 1;
+}
+
+void Solver::update_params()
+{
+    m_h             = m_config->smoothing_radius;
+    m_h2            = m_h*m_h2;
+    m_timestep      = m_config->timestep;
+    m_cfm_epsilon   = m_config->cfm_epsilon;;
+    m_poly6_factor  = get_poly6_factor(m_h);
+    m_spiky_factor  = get_spiky_factor(m_h);
+    m_solver_iters  = m_config->solver_iters;
+    m_rest_density  = m_config->rest_density;
+    m_rest_density2 = m_rest_density*m_rest_density; 
+    m_particle_mass = m_config->particle_mass;
+    m_kernel_radius = m_config->kernel_radius;
 }
 
 void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> hash_grid)
 {
-    // TODO make into member
     const int nparticles = particles.size();
+    update_params(); // update simulation paramters
+
+    // TODO make into member
     std::vector<float> lambdas(nparticles);
     std::vector<std::vector<int>> particle_neighbors(nparticles);
-    std::vector<glm::vec3> gradients;
+    // std::vector<glm::vec3> gradients;
 
-    const float kernel_radius = 1.0f;
-    const float rest_density  = 0.5f;
-    const float particle_mass = 1.0f;
-    const float rest_density2 = rest_density*rest_density; 
-    const float cfm_epsilon   = 0.1f;
 
     // Compute Lambdas First
     for (int i = 0; i < nparticles; ++i)
@@ -37,12 +44,13 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         Particle& particle = particles[i];
 
         // 1. Apply external forces
-        particle.p_old = particle.p;
-        particle.p += m_timestep*particle.v;
-
+        {
+            particle.p_old = particle.p;
+            particle.p += m_timestep*particle.v;
+        }
 
         // 2. Find all neighbors
-        std::vector<int> neighbors = hash_grid->find_neighbors(particle.id, particles, kernel_radius);
+        std::vector<int> neighbors = hash_grid->find_neighbors(particle.id, particles, m_kernel_radius);
         particle_neighbors[i] = neighbors;
 
         // 3. Compute Lambda
@@ -55,16 +63,16 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
             glm::vec3 diff = particle.p - particles[j].p;
 
             // SPH density estimator
-            density_i += particle_mass * poly6_kernel(diff); 
+            density_i += m_particle_mass * poly6_kernel(diff); 
 
             // gradient accumulation
-            glm::vec3 tmp_grad = spiky_grad_kernel(diff)/rest_density;
+            glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
             grad_Ci_norm2 += glm::length2(tmp_grad);
             grad_Ci_i += tmp_grad;
         }
-        float C_i = density_i/rest_density - 1.0f;
+        float C_i = density_i/m_rest_density - 1.0f;
         grad_Ci_norm2 += glm::length2(grad_Ci_i);
-        lambdas[i] = -C_i/(grad_Ci_norm2 + cfm_epsilon);
+        lambdas[i] = -C_i/(grad_Ci_norm2 + m_cfm_epsilon);
         //if (lambdas[i] != 0) {
         //    std::cout << lambdas[i] << std::endl;
         //    std::cout << "C_i:" << C_i << std::endl;
@@ -89,7 +97,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
             glm::vec3 diff = particle.p - particles[j].p;
             dp += (lambdas[i]+lambdas[j])*spiky_grad_kernel(diff);
         }
-        dp /= rest_density;
+        dp /= m_rest_density;
 
         particle.p += dp;
         if (dp != glm::vec3(0,0,0))
