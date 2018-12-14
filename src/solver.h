@@ -2,12 +2,15 @@
 #define SOLVER_H
 
 #include <glm/glm.hpp>
+#include <vector>
 
 struct Particle
 {
-    glm::vec3 p, v;
+    glm::vec3 p, p_old; // position
+    glm::vec3 v; // velocity
     unsigned char r,g,b,a;
     float size;
+    int id;
 };
 
 class Solver 
@@ -16,7 +19,7 @@ public:
 
     Solver(/* config* c */);
 
-    //void step(std::vector<
+    void step(std::vector<Particle>& particles);
 
 private:
     /* SPH Kernels */
@@ -31,6 +34,8 @@ private:
     float m_h2; // squared
     float m_poly6_factor;
     float m_spiky_factor;
+    float m_timestep;
+    size_t m_solver_iters;
 
 
 
