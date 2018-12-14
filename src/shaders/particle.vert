@@ -10,10 +10,12 @@ out vec4 color;
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform mat4 ortho;
 
 void main()
 {
 	float particleSize = particle_position.w; // 4th position is size
+    particleSize = 0.1f;
 	vec3 particleCenter = particle_position.xyz;
 	
     //vec3 left = view[0].xyz;

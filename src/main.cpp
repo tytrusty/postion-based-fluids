@@ -17,6 +17,7 @@
 #include "config.h"
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 //---------------------------------------//
 // Particle Tutorial
@@ -132,9 +133,13 @@ int main(int, char**)
     std::function<const glm::mat4*()> model_data = [&mats]() {
 		return mats.model;
 	};
+
+    glm::mat4 ortho_mat = glm::ortho<float>(0.0f, (float)window_width, 0.0f, (float)window_height, kNear, kFar);
+
 	std::function<glm::mat4()> view_data = [&mats]() { return *mats.view; };
 	std::function<glm::mat4()> proj_data = [&mats]() { return *mats.projection; };
 	std::function<glm::mat4()> identity_mat = [](){ return glm::mat4(1.0f); };
+	std::function<glm::mat4()> ortho_data = [&ortho_mat](){ return ortho_mat; };
 	std::function<glm::vec3()> cam_data = [&gui](){ return gui.getCamera(); };
 	std::function<glm::vec4()> lp_data = [&light_position]() { return light_position; };
 	std::function<float()> alpha_data = [&gui]() { return gui.isTransparent() ? 0.5 : 1.0; };
@@ -145,6 +150,7 @@ int main(int, char**)
 	auto std_camera = make_uniform("camera_position", cam_data);
 	auto std_proj = make_uniform("projection", proj_data);
 	auto std_light = make_uniform("light_position", lp_data);
+    auto std_ortho = make_uniform("ortho", ortho_data);
 	auto object_alpha = make_uniform("alpha", alpha_data);
 
 
@@ -195,7 +201,7 @@ int main(int, char**)
 	RenderPass particle_pass(-1,
 			particle_pass_input,
 			{ particle_vertex_shader, nullptr, particle_fragment_shader},
-			{ std_view, std_proj},
+			{ std_view, std_proj, std_ortho, std_light},
 			{ "fragment_color" }
 			);
 

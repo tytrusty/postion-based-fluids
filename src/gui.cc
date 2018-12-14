@@ -53,9 +53,6 @@ void GUI::mousePosCallback(double mouse_x, double mouse_y)
 	if (mouse_x > view_width_)
 		return ;
 	glm::vec3 mouse_direction = glm::normalize(glm::vec3(delta_x, delta_y, 0.0f));
-	glm::vec2 mouse_start = glm::vec2(last_x_, last_y_);
-	glm::vec2 mouse_end = glm::vec2(current_x_, current_y_);
-	glm::uvec4 viewport = glm::uvec4(0, 0, view_width_, view_height_);
 
 	bool drag_camera = drag_state_ && current_button_ == GLFW_MOUSE_BUTTON_LEFT;
 
