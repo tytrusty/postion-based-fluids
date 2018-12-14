@@ -34,7 +34,6 @@ static GLfloat* particle_position_data = new GLfloat[nparticles*4];
 static GLubyte* particle_color_data    = new GLubyte[nparticles*4];
 //---------------------------------------//
 
-
 static void error_callback(int error, const char* description)
 {
     fprintf(stderr, "Error %d: %s\n", error, description);
@@ -122,7 +121,7 @@ int main(int, char**)
     bool show_another_window = false;
     ImVec4 clear_color = ImColor(114, 144, 154);
 
-    glm::vec4 light_position = glm::vec4(0.0f, 100.0f, 0.0f, 1.0f);
+    glm::vec4 light_position = glm::vec4(0.0f, 10.0f, 0.0f, 1.0f);
     MatrixPointers mats;
 
     std::vector<glm::vec4> floor_vertices;
@@ -135,6 +134,7 @@ int main(int, char**)
 	};
 
     glm::mat4 ortho_mat = glm::ortho<float>(0.0f, (float)window_width, 0.0f, (float)window_height, kNear, kFar);
+    float particle_radius = 0.5f;
 
 	std::function<glm::mat4()> view_data = [&mats]() { return *mats.view; };
 	std::function<glm::mat4()> proj_data = [&mats]() { return *mats.projection; };
@@ -143,6 +143,7 @@ int main(int, char**)
 	std::function<glm::vec3()> cam_data = [&gui](){ return gui.getCamera(); };
 	std::function<glm::vec4()> lp_data = [&light_position]() { return light_position; };
 	std::function<float()> alpha_data = [&gui]() { return gui.isTransparent() ? 0.5 : 1.0; };
+	std::function<float()> radius_data = [&particle_radius]() { return particle_radius; };
 
 	auto std_model = std::make_shared<ShaderUniform<const glm::mat4*>>("model", model_data);
 	auto floor_model = make_uniform("model", identity_mat);
@@ -152,6 +153,7 @@ int main(int, char**)
 	auto std_light = make_uniform("light_position", lp_data);
     auto std_ortho = make_uniform("ortho", ortho_data);
 	auto object_alpha = make_uniform("alpha", alpha_data);
+    auto object_radius = make_uniform("radius", radius_data);
 
 
 	// Floor render pass
@@ -165,31 +167,43 @@ int main(int, char**)
 			{ "fragment_color" }
 			);
 
+    // ----------------------------------------------------------------------//
+    //                           Generate particle block                     //
     glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
-    float step = 0.1f;
-    for (int i = 0; i < nparticles; ++i)
+    float step = particle_radius;
+    int n = 0;
+    for (int i = 0; i < 10; ++i)
     {
-        particle_container[i].pos = start;
-        particle_container[i].r = rand() % 256;
-        particle_container[i].g = rand() % 256;
-        particle_container[i].b = rand() % 256;
-        particle_container[i].a = (rand() % 256)/3;
-        particle_container[i].size = 0.2f;// (rand()%1000)/2000.0f + 0.1f;
+        start.x = step*i;
+        for (int j = 0; j < 10; ++j)
+        {
+            start.y = step*j;
+            for (int k = 0; k < 10; ++k)
+            {
+                start.z = step*k;
 
-        particle_position_data[4*i+0] = start.x;
-        particle_position_data[4*i+1] = start.y;
-        particle_position_data[4*i+2] = start.z;
-        particle_position_data[4*i+3] = particle_container[i].size;;
+                particle_container[n].pos = start;
+                particle_container[n].r = rand() % 256;
+                particle_container[n].g = rand() % 256;
+                particle_container[n].b = rand() % 256;
+                particle_container[n].a = (rand() % 256)/3;
+                particle_container[n].size = 0.2f;// (rand()%1000)/2000.0f + 0.1f;
 
-        particle_color_data[4*i+0] = particle_container[i].r;
-        particle_color_data[4*i+1] = particle_container[i].g;
-        particle_color_data[4*i+2] = particle_container[i].b;
-        particle_color_data[4*i+3] = particle_container[i].a;
+                particle_position_data[4*n+0] = start.x;
+                particle_position_data[4*n+1] = start.y;
+                particle_position_data[4*n+2] = start.z;
+                particle_position_data[4*n+3] = particle_container[i].size;;
 
-        start.x += step;
-        start.y += step;
+                particle_color_data[4*n+0] = particle_container[i].r;
+                particle_color_data[4*n+1] = particle_container[i].g;
+                particle_color_data[4*n+2] = particle_container[i].b;
+                particle_color_data[4*n+3] = particle_container[i].a;
+
+                ++n;
+            }
+        }
     }
-
+    // ----------------------------------------------------------------------//
 
     // Particle pass
     RenderDataInput particle_pass_input;
@@ -201,7 +215,7 @@ int main(int, char**)
 	RenderPass particle_pass(-1,
 			particle_pass_input,
 			{ particle_vertex_shader, nullptr, particle_fragment_shader},
-			{ std_view, std_proj, std_ortho, std_light},
+			{ std_view, std_proj, std_light, object_radius},
 			{ "fragment_color" }
 			);
 

@@ -9,6 +9,7 @@ in vec4 color;
 out vec4 fragment_color;
 
 uniform vec4 light_position;
+uniform float radius;
 
 void main(){
 	// Output color = color of the texture at the specified UV
@@ -22,7 +23,6 @@ void main(){
 
 	// Get fragment depth difference from center of circle, along z-axis
     float normalized_depth = sqrt(1-dist);
-    float radius = 0.1f;
     float fragment_depth = radius * 0.5f * normalized_depth;
 
 	float curr_depth = (gl_FragCoord.z - fragment_depth - 0.0025);
