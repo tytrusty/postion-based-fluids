@@ -158,7 +158,7 @@ int main(int, char**)
     // ----------------------------------------------------------------------//
     //                           Generate particle block                     //
     glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
-    float step = particle_radius;
+    float step = particle_radius*2;
     int n = 0;
     for (int i = 0; i < 10; ++i)
     {

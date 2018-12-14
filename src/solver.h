@@ -27,8 +27,8 @@ public:
 
 private:
     /* SPH Kernels */
-    float poly6_kernel(const glm::vec3& r, const float h);
-    glm::vec3 spiky_grad_kernel(const glm::vec3& r, const float h);
+    float poly6_kernel(const glm::vec3& r);
+    glm::vec3 spiky_grad_kernel(const glm::vec3& r);
 
     /* Set SPH Kernels scale factors */
     void set_poly6_factor() { m_poly6_factor = 315.0f/(64.0f*M_PI*std::pow(m_h,9)); }
@@ -36,7 +36,7 @@ private:
 
     float m_h;  // smoothing radius
     float m_h2; // squared
-    float m_poly6_factor;
+    float m_poly6_factor; 
     float m_spiky_factor;
     float m_timestep;
     size_t m_solver_iters;
