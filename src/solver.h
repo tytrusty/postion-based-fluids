@@ -13,18 +13,19 @@ struct Particle
 class Solver 
 {
 public:
-    /* SPH Kernels */
-    static float poly6_kernel(const glm::vec3& r, const float h);
-    static glm::vec3 spiky_grad_kernel(const glm::vec3& r, const float h);
 
     Solver(/* config* c */);
 
     //void step(std::vector<
 
 private:
+    /* SPH Kernels */
+    float poly6_kernel(const glm::vec3& r, const float h);
+    glm::vec3 spiky_grad_kernel(const glm::vec3& r, const float h);
+
+    /* Set SPH Kernels scale factors */
     void set_poly6_factor() { m_poly6_factor = 315.0f/(64.0f*M_PI*std::pow(m_h,9)); }
     void set_spiky_factor() { m_spiky_factor = -45.0f/(M_PI*std::pow(m_h,6)); }
-
 
     float m_h;  // smoothing radius
     float m_h2; // squared

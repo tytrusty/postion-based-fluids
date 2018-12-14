@@ -10,7 +10,8 @@ float Solver::poly6_kernel(const glm::vec3& r, const float h)
 glm::vec3 Solver::spiky_grad_kernel(const glm::vec3& r, const float h)
 {
     float len = glm::length(r);
-    return (m_spiky_factor * glm::pow(m_h - len, 2)) * r / len;
+    float scale = (m_spiky_factor * glm::pow(m_h - len, 2)) / len;
+    return scale*r;
 }
 
 Solver::Solver()
@@ -18,5 +19,5 @@ Solver::Solver()
     m_h = 0.2f;
     m_h2 = m_h*m_h;
     set_poly6_factor();
-    set_spiky_grad_factor();
+    set_spiky_factor();
 }

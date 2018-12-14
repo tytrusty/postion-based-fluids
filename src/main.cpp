@@ -116,10 +116,10 @@ int main(int, char**)
 
     //---------------------------------------//
     // Particle Temp
-    const int nparticles = 1000;
-    float particle_radius = 0.5f;
-    Particle particle_container[nparticles];
-    static GLfloat* particle_position_data = new GLfloat[nparticles*4];
+    const int nparticles = 100000;
+    float particle_radius = 0.3f;
+    std::vector<Particle> particle_container(nparticles, Particle());
+    static GLfloat* particle_position_data = new GLfloat[nparticles*3];
     static GLubyte* particle_color_data    = new GLubyte[nparticles*4];
     //---------------------------------------//
 
@@ -162,13 +162,13 @@ int main(int, char**)
     glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
     float step = particle_radius;
     int n = 0;
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < 100; ++i)
     {
         start.x = step*i;
         for (int j = 0; j < 10; ++j)
         {
             start.y = step*j;
-            for (int k = 0; k < 10; ++k)
+            for (int k = 0; k < 100; ++k)
             {
                 start.z = step*k;
 
@@ -177,12 +177,10 @@ int main(int, char**)
                 particle_container[n].g = rand() % 256;
                 particle_container[n].b = rand() % 256;
                 particle_container[n].a = (rand() % 256)/3;
-                particle_container[n].size = 0.2f;// (rand()%1000)/2000.0f + 0.1f;
 
-                particle_position_data[4*n+0] = start.x;
-                particle_position_data[4*n+1] = start.y;
-                particle_position_data[4*n+2] = start.z;
-                particle_position_data[4*n+3] = particle_container[i].size;;
+                particle_position_data[3*n+0] = start.x;
+                particle_position_data[3*n+1] = start.y;
+                particle_position_data[3*n+2] = start.z;
 
                 particle_color_data[4*n+0] = particle_container[i].r;
                 particle_color_data[4*n+1] = particle_container[i].g;
@@ -198,9 +196,9 @@ int main(int, char**)
     // Particle pass
     RenderDataInput particle_pass_input;
     particle_pass_input.assign(0, "vertex_position", g_vertex_buffer_data, sizeof(g_vertex_buffer_data), 3, GL_FLOAT);
-    particle_pass_input.assign(1, "particle_position", particle_position_data,
-            nparticles*4*sizeof(GLfloat), 4, GL_FLOAT);
-    particle_pass_input.assign(2, "particle_color", particle_color_data,
+    particle_pass_input.assign(1, "particle_position", nullptr,
+            nparticles*3*sizeof(GLfloat), 3, GL_FLOAT);
+    particle_pass_input.assign(2, "particle_color", nullptr,
             nparticles*4*sizeof(GLubyte), 4, GL_UNSIGNED_INT);
 	RenderPass particle_pass(-1,
 			particle_pass_input,
@@ -263,6 +261,8 @@ int main(int, char**)
 		floor_pass.setup();
 		CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
+        particle_pass.updateVBO(1, particle_position_data, nparticles);
+        particle_pass.updateVBO(2, particle_color_data, nparticles);
         particle_pass.setup();
         glVertexAttribDivisor(0,0);
         glVertexAttribDivisor(1,1);
