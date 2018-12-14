@@ -15,24 +15,10 @@
 #include "gui.h"
 #include "debuggl.h"
 #include "config.h"
+#include "solver.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
-//---------------------------------------//
-// Particle Tutorial
-struct particle 
-{
-    glm::vec3 pos, vel;
-    unsigned char r,g,b,a;
-    float size;
-
-};
-const int nparticles = 1000;
-particle particle_container[nparticles];
-static GLfloat* particle_position_data = new GLfloat[nparticles*4];
-static GLubyte* particle_color_data    = new GLubyte[nparticles*4];
-//---------------------------------------//
 
 static void error_callback(int error, const char* description)
 {
@@ -128,18 +114,23 @@ int main(int, char**)
     std::vector<glm::uvec3> floor_faces;
     create_floor(floor_vertices, floor_faces);
 
-	// Setup uniforms
-    std::function<const glm::mat4*()> model_data = [&mats]() {
-		return mats.model;
-	};
-
-    glm::mat4 ortho_mat = glm::ortho<float>(0.0f, (float)window_width, 0.0f, (float)window_height, kNear, kFar);
+    //---------------------------------------//
+    // Particle Temp
+    const int nparticles = 1000;
     float particle_radius = 0.5f;
+    Particle particle_container[nparticles];
+    static GLfloat* particle_position_data = new GLfloat[nparticles*4];
+    static GLubyte* particle_color_data    = new GLubyte[nparticles*4];
+    //---------------------------------------//
+
+
+	// Setup uniforms
+    std::function<const glm::mat4*()> model_data = [&mats]() { return mats.model; };
+
 
 	std::function<glm::mat4()> view_data = [&mats]() { return *mats.view; };
 	std::function<glm::mat4()> proj_data = [&mats]() { return *mats.projection; };
 	std::function<glm::mat4()> identity_mat = [](){ return glm::mat4(1.0f); };
-	std::function<glm::mat4()> ortho_data = [&ortho_mat](){ return ortho_mat; };
 	std::function<glm::vec3()> cam_data = [&gui](){ return gui.getCamera(); };
 	std::function<glm::vec4()> lp_data = [&light_position]() { return light_position; };
 	std::function<float()> alpha_data = [&gui]() { return gui.isTransparent() ? 0.5 : 1.0; };
@@ -151,7 +142,6 @@ int main(int, char**)
 	auto std_camera = make_uniform("camera_position", cam_data);
 	auto std_proj = make_uniform("projection", proj_data);
 	auto std_light = make_uniform("light_position", lp_data);
-    auto std_ortho = make_uniform("ortho", ortho_data);
 	auto object_alpha = make_uniform("alpha", alpha_data);
     auto object_radius = make_uniform("radius", radius_data);
 
@@ -182,7 +172,7 @@ int main(int, char**)
             {
                 start.z = step*k;
 
-                particle_container[n].pos = start;
+                particle_container[n].p = start;
                 particle_container[n].r = rand() % 256;
                 particle_container[n].g = rand() % 256;
                 particle_container[n].b = rand() % 256;
