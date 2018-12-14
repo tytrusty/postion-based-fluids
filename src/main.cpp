@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
+#include <memory>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -116,18 +117,16 @@ int main(int, char**)
 
     //---------------------------------------//
     // Particle Temp
-    const int nparticles = 100000;
+    const int nparticles = 1000;
     float particle_radius = 0.3f;
-    std::vector<Particle> particle_container(nparticles, Particle());
+    std::vector<Particle> particles(nparticles, Particle());
+    for (int i = 0; i < nparticles; ++i) { particles[i].id = i; }  // set ID
     static GLfloat* particle_position_data = new GLfloat[nparticles*3];
     static GLubyte* particle_color_data    = new GLubyte[nparticles*4];
     //---------------------------------------//
 
-
 	// Setup uniforms
     std::function<const glm::mat4*()> model_data = [&mats]() { return mats.model; };
-
-
 	std::function<glm::mat4()> view_data = [&mats]() { return *mats.view; };
 	std::function<glm::mat4()> proj_data = [&mats]() { return *mats.projection; };
 	std::function<glm::mat4()> identity_mat = [](){ return glm::mat4(1.0f); };
@@ -145,7 +144,6 @@ int main(int, char**)
 	auto object_alpha = make_uniform("alpha", alpha_data);
     auto object_radius = make_uniform("radius", radius_data);
 
-
 	// Floor render pass
 	RenderDataInput floor_pass_input;
 	floor_pass_input.assign(0, "vertex_position", floor_vertices.data(), floor_vertices.size(), 4, GL_FLOAT);
@@ -162,30 +160,30 @@ int main(int, char**)
     glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
     float step = particle_radius;
     int n = 0;
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < 10; ++i)
     {
         start.x = step*i;
         for (int j = 0; j < 10; ++j)
         {
             start.y = step*j;
-            for (int k = 0; k < 100; ++k)
+            for (int k = 0; k < 10; ++k)
             {
                 start.z = step*k;
 
-                particle_container[n].p = start;
-                particle_container[n].r = rand() % 256;
-                particle_container[n].g = rand() % 256;
-                particle_container[n].b = rand() % 256;
-                particle_container[n].a = (rand() % 256)/3;
+                particles[n].p = start;
+                particles[n].r = rand() % 256;
+                particles[n].g = rand() % 256;
+                particles[n].b = rand() % 256;
+                particles[n].a = (rand() % 256)/3;
 
                 particle_position_data[3*n+0] = start.x;
                 particle_position_data[3*n+1] = start.y;
                 particle_position_data[3*n+2] = start.z;
 
-                particle_color_data[4*n+0] = particle_container[i].r;
-                particle_color_data[4*n+1] = particle_container[i].g;
-                particle_color_data[4*n+2] = particle_container[i].b;
-                particle_color_data[4*n+3] = particle_container[i].a;
+                particle_color_data[4*n+0] = particles[i].r;
+                particle_color_data[4*n+1] = particles[i].g;
+                particle_color_data[4*n+2] = particles[i].b;
+                particle_color_data[4*n+3] = particles[i].a;
 
                 ++n;
             }
@@ -207,11 +205,16 @@ int main(int, char**)
 			{ "fragment_color" }
 			);
 
+    std::shared_ptr<Solver> solver = std::make_shared<Solver>();
+    std::shared_ptr<HashGrid> grid = std::make_shared<HashGrid>(5.0f);
+    grid->init(particles);
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         ImGui_ImplGlfwGL3_NewFrame();
-
+        
+        solver->step(particles, grid);
 
         // 1. Show a simple window
         // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
@@ -257,10 +260,11 @@ int main(int, char**)
 		gui.updateMatrices();
 		mats = gui.getMatrixPointers();
 
-		// Render
+		// Render floor 
 		floor_pass.setup();
 		CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
+        // Render particles
         particle_pass.updateVBO(1, particle_position_data, nparticles);
         particle_pass.updateVBO(2, particle_color_data, nparticles);
         particle_pass.setup();
@@ -269,6 +273,7 @@ int main(int, char**)
         glVertexAttribDivisor(2,1);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, nparticles);
 
+        // Render UI 
 		ImGui::Render();
 
         glfwPollEvents();

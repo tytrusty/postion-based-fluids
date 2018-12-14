@@ -2,22 +2,30 @@
 #define HASH_GRID_H
 
 #include <tuple>
-#include <unordered_map>
 #include <vector>
 #include <map>
+#include <iostream>
 
 #include <glm/gtx/norm.hpp>
 
 #include "solver.h"
 
-class hash_grid
+class HashGrid
 {
 public:
     typedef std::tuple<int,int,int> triple;
 
-    hash_grid(float cell_width) 
+    HashGrid(float cell_width) 
         : m_cell_width(cell_width)
     {}
+
+    void update_cell_width(float cell_width) { m_cell_width = cell_width; }
+
+    void init(const std::vector<Particle>& particles)
+    {
+        for (const auto& p : particles)
+            insert_particle(p);
+    }
 
     triple hash_position(const Particle& particle)
     {

@@ -3,6 +3,9 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <memory>
+
+class HashGrid;
 
 struct Particle
 {
@@ -20,6 +23,7 @@ public:
     Solver(/* config* c */);
 
     void step(std::vector<Particle>& particles);
+    void step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> hash_grid);
 
 private:
     /* SPH Kernels */
@@ -36,9 +40,5 @@ private:
     float m_spiky_factor;
     float m_timestep;
     size_t m_solver_iters;
-
-
-
-
 };
 #endif // SOLVER_H

@@ -1,6 +1,8 @@
 #include "solver.h"
+#include "hash_grid.h"
 
 #include <glm/gtx/norm.hpp>
+#include <iostream>
 
 Solver::Solver()
 {
@@ -12,7 +14,7 @@ Solver::Solver()
     m_solver_iters = 1;
 }
 
-void Solver::step(std::vector<Particle>& particles)
+void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> hash_grid)
 {
     // TODO make into member
     std::vector<float> lambdas(particles.size());
@@ -20,6 +22,7 @@ void Solver::step(std::vector<Particle>& particles)
     // Compute Lambdas First
     for (Particle& particle : particles)
     {
+        std::vector<int> neighbors = hash_grid->find_neighbors(particle.id, particles, 0.5f);
         // 1. Apply external forces
 
         // 2. Find all neighbors
