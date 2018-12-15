@@ -63,7 +63,6 @@ GLFWwindow* init_glefw()
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE); // Disable resizing, for simplicity
     glfwWindowHint(GLFW_SAMPLES, 4);
     auto ret = glfwCreateWindow(window_width, window_height, window_title.data(), nullptr, nullptr);
-
     glfwMakeContextCurrent(ret);
     glewExperimental = GL_TRUE;
     glewInit();
@@ -73,7 +72,6 @@ GLFWwindow* init_glefw()
     const GLubyte* version = glGetString(GL_VERSION);    // version as a string
     std::cout << "Renderer: " << renderer << "\n";
     std::cout << "OpenGL version supported:" << version << "\n";
-
     return ret;
 }
 
@@ -95,6 +93,43 @@ static const GLfloat g_vertex_buffer_data[] = {
     0.5f, 0.5f, 0.0f,
 };
 
+void create_fluid_cube(std::vector<Particle>& particles,
+        GLfloat* position_data, GLubyte* color_data, float particle_radius)
+{
+    glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
+    float step = particle_radius;
+    int n = 0;
+    for (int i = 0; i < 10; ++i)
+    {
+        start.x = step*i;
+        for (int j = 0; j < 10; ++j)
+        {
+            start.y = step*j;
+            for (int k = 0; k < 10; ++k)
+            {
+                start.z = step*k;
+
+                particles[n].p = start;
+                particles[n].v = glm::vec3(0.0f);
+                particles[n].r = rand() % 256;
+                particles[n].g = rand() % 256;
+                particles[n].b = rand() % 256;
+                particles[n].a = (rand() % 256)/3;
+
+                position_data[3*n+0] = start.x;
+                position_data[3*n+1] = start.y;
+                position_data[3*n+2] = start.z;
+
+                color_data[4*n+0] = particles[i].r;
+                color_data[4*n+1] = particles[i].g;
+                color_data[4*n+2] = particles[i].b;
+                color_data[4*n+3] = particles[i].a;
+                ++n;
+            }
+        }
+    }
+}
+
 
 int main(int, char**)
 {
@@ -106,8 +141,7 @@ int main(int, char**)
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, false);
 
-    bool show_test_window = true;
-    bool show_another_window = false;
+    bool show_test_window = false;
     ImVec4 clear_color = ImColor(114, 144, 154);
 
     glm::vec4 light_position = glm::vec4(0.0f, 10.0f, 0.0f, 1.0f);
@@ -157,41 +191,6 @@ int main(int, char**)
             { "fragment_color" }
             );
 
-    // ----------------------------------------------------------------------//
-    //                           Generate particle block                     //
-    glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
-    float step = particle_radius;
-    int n = 0;
-    for (int i = 0; i < 10; ++i)
-    {
-        start.x = step*i;
-        for (int j = 0; j < 10; ++j)
-        {
-            start.y = step*j;
-            for (int k = 0; k < 10; ++k)
-            {
-                start.z = step*k;
-
-                particles[n].p = start;
-                particles[n].r = rand() % 256;
-                particles[n].g = rand() % 256;
-                particles[n].b = rand() % 256;
-                particles[n].a = (rand() % 256)/3;
-
-                particle_position_data[3*n+0] = start.x;
-                particle_position_data[3*n+1] = start.y;
-                particle_position_data[3*n+2] = start.z;
-
-                particle_color_data[4*n+0] = particles[i].r;
-                particle_color_data[4*n+1] = particles[i].g;
-                particle_color_data[4*n+2] = particles[i].b;
-                particle_color_data[4*n+3] = particles[i].a;
-
-                ++n;
-            }
-        }
-    }
-    // ----------------------------------------------------------------------//
 
     // Particle pass
     RenderDataInput particle_pass_input;
@@ -205,17 +204,26 @@ int main(int, char**)
             { "fragment_color" }
             );
 
+    create_fluid_cube(particles, particle_position_data, particle_color_data, particle_radius);
     std::shared_ptr<Solver> solver = std::make_shared<Solver>(config);
     std::shared_ptr<HashGrid> grid = std::make_shared<HashGrid>(config->grid_cell_width);
     grid->init(particles);
 
     bool pause_simulation = true;
-
+    bool reset_simulation = false;
 
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         ImGui_ImplGlfwGL3_NewFrame();
+
+        if (reset_simulation)
+        {
+            particle_radius = config->particle_radius;
+            create_fluid_cube(particles, particle_position_data, particle_color_data, particle_radius);
+            reset_simulation = false;
+        }
+
         if (!pause_simulation) 
             solver->step(particles, grid);
        
@@ -241,21 +249,16 @@ int main(int, char**)
             ImGui::SliderFloat("Particle Rest Density", &config->rest_density, 0.1f, 100000.0f);
             ImGui::SliderFloat("Particle Mass", &config->particle_mass, 0.1f, 10.0f);
             ImGui::SliderFloat("CFM Epsilon", &config->cfm_epsilon, 0.1f, 10000.0f);
+            ImGui::SliderFloat("Viscosity Scale", &config->viscosity_c, 0.000001f, 2.0f);
+            ImGui::SliderFloat("Artificial pressure (k)", &config->artificial_pressure_k, 0.00001f, 5.0f);
+            ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
+            ImGui::SliderFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
 
             ImGui::ColorEdit3("Clear Color", (float*)&clear_color);
             if (ImGui::Button("Start/Stop")) pause_simulation ^= 1;
+            if (ImGui::Button("Reset")) reset_simulation ^= 1;
             if (ImGui::Button("Test Window")) show_test_window ^= 1;
-            if (ImGui::Button("Another Window")) show_another_window ^= 1;
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
-
-        // 2. Show another simple window, this time using an explicit Begin/End pair
-        if (show_another_window)
-        {
-            ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
-            ImGui::Begin("Another Window", &show_another_window);
-            ImGui::Text("Hello");
             ImGui::End();
         }
 

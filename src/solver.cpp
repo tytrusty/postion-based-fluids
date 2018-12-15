@@ -67,78 +67,87 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 
             // gradient accumulation
             glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
-            grad_Ci_norm2 += glm::length2(tmp_grad); 
+            grad_Ci_norm2 -= glm::length2(tmp_grad); 
             grad_Ci_i += tmp_grad;
         }
         float C_i = density_i/m_rest_density - 1.0f;
         grad_Ci_norm2 += glm::length2(grad_Ci_i);
         lambdas[i] = -C_i/(grad_Ci_norm2 + m_cfm_epsilon);
-        // std::cout << "lambdas: " << lambdas[i] << std::endl;
     }
 
     // Update position and velocity
+    const float k  = m_config->artificial_pressure_k;    
+    const float n  = m_config->artificial_pressure_n;
+    const float dq = m_config->artificial_pressure_dq;
+    const float c = m_config->viscosity_c; 
+
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
-
-        glm::vec3 dp(0.0f);
-
-        // 3. Compute Lambda
         float grad_Ci_norm2 = 0.0f;
         glm::vec3 grad_Ci_i(0.0f); 
+        glm::vec3 viscosity(0.0f); 
+        glm::vec3 dp(0.0f);
 
         for (int j : particle_neighbors[i])
         {
             glm::vec3 diff = particle.p - particles[j].p;
-            dp += (lambdas[i]+lambdas[j])*spiky_grad_kernel(diff);
+            glm::vec3 diffv = particle.v - particles[j].v;
+
+            // s_corr
+            float s_corr = 0.0f;
+            {
+                s_corr = -k*glm::pow(poly6_kernel(diff)/poly6_kernel(dq), n);
+            }
+            dp += (lambdas[i]+lambdas[j]+s_corr)*spiky_grad_kernel(diff);
+            viscosity += poly6_kernel(diff)*diffv;
         }
         dp /= m_rest_density;
         
 
         particle.p += dp;
-        //if (i % 200 == 0)
-        //if (dp != glm::vec3(0,0,0))
-        //    std::cout << "dp_" << i << ": " << glm::to_string(dp) << std::endl;
 
+        // boundary conditions
+        float bound = 1.0f;
+        if (particle.p.y > bound) particle.p.y = bound;
+        if (particle.p.y < 0.0f) particle.p.y = 0.0f;
+        if (particle.p.x > bound) particle.p.x = bound;
+        if (particle.p.x < 0.0f) particle.p.x = 0.0f;
+        if (particle.p.z > bound) particle.p.z = bound;
+        if (particle.p.z < 0.0f) particle.p.z = 0.0f;
+
+        // Update velocity 
         particle.v = (particle.p - particle.p_old) / m_timestep;
 
-        // handle collisions
-        if (particle.p.y > 4.0f) particle.p.y = 0.0f;
-        if (particle.p.y < 0.0f)
-        {
-            // float penaltyStiffness = 1e2;
-            // particle.v += m_timestep*glm::vec3(0.0f, penaltyStiffness*particle.p.y*particle.p.y, 0);
-            particle.p.y = 0.0f;
-        }
-        if (particle.p.x > 4.0f)
-            particle.p.x = 4.0f;
-        if (particle.p.x < 0.0f)
-            particle.p.x = 0.0f;
-
-        if (particle.p.z > 4.0f)
-            particle.p.z = 4.0f;
-        if (particle.p.z < 0.0f)
-            particle.p.z = 0.0f;
-
+        particle.v += c*viscosity;
     }
 }
 
 float Solver::poly6_kernel(const glm::vec3& r)
 {
-    const float base = m_h2-glm::length2(r);
-    if (base < 1e-4)
-        return  0.0f;
-    else
+    float r2 = glm::length2(r);
+    const float base = m_h2-r2;
+    if (r2 < m_h2)
         return m_poly6_factor * glm::pow(base, 3);
+    else
+        return  0.0f;
+}
+
+float Solver::poly6_kernel(const float r)
+{
+    const float base = m_h2-r*r;
+    if (r < m_h) // (base < 1e-4)
+        return m_poly6_factor * glm::pow(base, 3);
+    else
+        return  0.0f;
 }
 
 glm::vec3 Solver::spiky_grad_kernel(const glm::vec3& r)
 {
-    float len2 = glm::length2(r);
-    if (len2 <= 1e-4)// || len2 >= m_h2)
+    float len = glm::length(r);
+    if (len > m_h || len < 1e-5)
         return glm::vec3(0.0f);
 
-    float len = glm::sqrt(len2);
     float scale = (m_spiky_factor * glm::pow(m_h - len, 2)) / len;
     return scale*r;
 }

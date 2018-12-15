@@ -5,7 +5,7 @@ struct Config
 {
     Config()
     {
-        particle_radius  = 0.2f;
+        particle_radius  = 0.1f;
         grid_cell_width  = 5.0f;
         smoothing_radius = 0.1f; 
         kernel_radius    = 2.0f; 
@@ -13,6 +13,10 @@ struct Config
         particle_mass    = 1.0f;
         cfm_epsilon      = 6000.0f;
         timestep         = 0.016f;
+        viscosity_c      = 0.0000001;
+        artificial_pressure_k  = 0.0001f;
+        artificial_pressure_dq = 0.03f;
+        artificial_pressure_n  = 4;
         nparticles   = 1000;
         solver_iters = 4;
     }
@@ -26,6 +30,10 @@ struct Config
     float particle_mass;    // SPH particle mass
     float cfm_epsilon;      // constraint force mixing epsilon for PBF
     float timestep;         // simulation timestep 
+    float artificial_pressure_k; 
+    float artificial_pressure_dq;
+    int artificial_pressure_n;
+    float viscosity_c;
     int nparticles;         // number of particles
     int solver_iters;       // simulation step solver iterations
 };
