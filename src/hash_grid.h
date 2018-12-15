@@ -50,10 +50,10 @@ public:
         }
     }
 
-    std::vector<int> find_neighbors(int idx, const std::vector<Particle>& particles, float radius)
+    std::vector<std::pair<int,float>> find_neighbors(int idx, const std::vector<Particle>& particles, float radius)
     {
         triple key = hash_position(particles[idx]);
-        std::vector<int> neighbors;
+        std::vector<std::pair<int,float>> neighbors;
         float radius2 = radius*radius; 
 
         int r = (int)(radius/m_cell_width) + 1;
@@ -74,8 +74,13 @@ public:
                         for (int nidx : bin)
                         {
                             const Particle& p = particles[nidx]; 
-                            if (nidx != idx && glm::distance2(p.p, particles[idx].p) < radius2)
-                                neighbors.emplace_back(nidx);
+                            if (nidx != idx)
+                            {
+                                float distsqr = glm::distance2(p.p, particles[idx].p);
+                                if (distsqr < radius2)
+                                    neighbors.emplace_back(std::make_pair(nidx,distsqr));
+
+                            }
                         }
                     }
                 }

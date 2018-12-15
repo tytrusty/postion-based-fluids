@@ -29,8 +29,9 @@ public:
 private:
     /* SPH Kernels */
     float poly6_kernel(const glm::vec3& r);
-    float poly6_kernel(const float r);
+    float poly6_kernel(const float r2);
     glm::vec3 spiky_grad_kernel(const glm::vec3& r);
+    float spiky_grad_norm2(const float r2);
     void update_params();
 
     /* Set SPH Kernels scale factors */

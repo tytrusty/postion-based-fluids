@@ -120,9 +120,9 @@ void create_fluid_cube(std::vector<Particle>& particles,
 
                 particles[n].p = start;
                 particles[n].v = glm::vec3(0.0f);
-                particles[n].r = 0; //rand() % 256;
-                particles[n].g = 0; //rand() % 256;
-                particles[n].b = 255; //rand() % 256;
+                particles[n].r = rand() % 256;
+                particles[n].g = rand() % 256;
+                particles[n].b = rand() % 256;
                 particles[n].a = (rand() % 256)/3;
 
                 color_data[4*n+0] = particles[n].r;

@@ -9,7 +9,9 @@
 
 #include <iostream>
 
-Solver::Solver(std::shared_ptr<Config> config)
+using namespace std; // haters gonna hate
+
+Solver::Solver(shared_ptr<Config> config)
     : m_config(config)
 {
 }
@@ -30,7 +32,7 @@ void Solver::update_params()
 }
 
 static int step_cnt = 0;
-void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> hash_grid)
+void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
 {
     step_cnt++;
     double t0 = glfwGetTime();
@@ -38,9 +40,9 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
     const int nparticles = particles.size();
     update_params(); // update simulation paramters
 
-    std::vector<float> lambdas(nparticles);
-    std::vector<std::vector<int>> particle_neighbors(nparticles);
-    // std::vector<glm::vec3> gradients;
+    vector<float> lambdas(nparticles);
+    vector<vector<pair<int,float>>> particle_neighbors(nparticles);
+    // vector<glm::vec3> gradients;
     double t_init = glfwGetTime()-t0;
     double t_predict_pos = 0.0f;
     double t_neighbors = 0.0f;
@@ -57,14 +59,14 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
             particle.p_old = particle.p;
             particle.v += m_timestep*glm::vec3(0.0f,-9.8f, 0.0f); // "gravity"
             particle.p += m_timestep*particle.v;
-            // std::cout << "p.v." << glm::to_string(particle.v) << std::endl;
+            // cout << "p.v." << glm::to_string(particle.v) << endl;
         }
         t_predict_pos += glfwGetTime()-t0;
 
 
         t0 = glfwGetTime();
         // 2. Find all neighbors
-        std::vector<int> neighbors = hash_grid->find_neighbors(particle.id, particles, m_kernel_radius);
+        vector<pair<int,float>> neighbors = hash_grid->find_neighbors(particle.id, particles, m_kernel_radius);
         particle_neighbors[i] = neighbors;
 
         t_neighbors += glfwGetTime()-t0;
@@ -75,25 +77,28 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         glm::vec3 grad_Ci_i(0.0f); 
 
         float density_i = 0.0f;
-        for (int j : neighbors)
+        for (auto& j_pair : neighbors)
         {
+            int j = j_pair.first;
+            float distsqr = j_pair.second;
             glm::vec3 diff = particle.p - particles[j].p;
 
             // SPH density estimator
-            density_i += m_particle_mass * poly6_kernel(diff); 
+            density_i += m_particle_mass * poly6_kernel(distsqr); 
 
             // gradient accumulation
-            glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
-            grad_Ci_norm2 -= glm::length2(tmp_grad);  //negate
+            glm::vec3 tmp_grad = spiky_grad_kernel(diff); ///m_rest_density;
+            grad_Ci_norm2 -= glm::length2(tmp_grad);  
             grad_Ci_i += tmp_grad;
         }
-        // std::cout << "density_i: " << density_i << std::endl;
+        // cout << "density_i: " << density_i << endl;
         float C_i = density_i/m_rest_density - 1.0f;
         //particle.r = 0.0f;
         //particle.g = 0.0f;
         //particle.b = density_i/m_rest_density*256;
         grad_Ci_norm2 += glm::length2(grad_Ci_i);
-        lambdas[i] = -C_i/(grad_Ci_norm2 + m_cfm_epsilon);
+        lambdas[i] = -C_i/((grad_Ci_norm2/m_rest_density) + m_cfm_epsilon);
+
         t_lambda += glfwGetTime()-t0;
         t0 = glfwGetTime();
     }
@@ -113,8 +118,10 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         glm::vec3 viscosity(0.0f); 
         glm::vec3 dp(0.0f);
 
-        for (int j : particle_neighbors[i])
+        // for (int j : particle_neighbors[i])
+        for (auto& j_pair : particle_neighbors[i])
         {
+            int j = j_pair.first;
             glm::vec3 diff = particle.p - particles[j].p;
             glm::vec3 diffv = particle.v - particles[j].v;
 
@@ -122,6 +129,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
             float s_corr = 0.0f;
             //{
             //    s_corr = -k*glm::pow(poly6_kernel(diff)/poly6_kernel(dq), n);
+            // SQUARE dq?
             //}
             dp += (lambdas[i]+lambdas[j]+s_corr)*spiky_grad_kernel(diff);
             //viscosity += poly6_kernel(diff)*diffv;
@@ -150,13 +158,13 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
     ///// Diagnostics /////
     if (step_cnt % 10 == 0)
     {
-        std::cout << "///////////////////" << std::endl;
-        std::cout << "(1) Init time:     " << t_init << std::endl;
-        std::cout << "(2) Predict time:  " << t_predict_pos << std::endl;
-        std::cout << "(3) Neighbor time: " << t_neighbors << std::endl;
-        std::cout << "(4) Lambda time:   " << t_lambda << std::endl;
-        std::cout << "(5) Update p time: " << t_update << std::endl;
-        std::cout << "///////////////////" << std::endl;
+        cout << "///////////////////" << endl;
+        cout << "(1) Init time:     " << t_init << endl;
+        cout << "(2) Predict time:  " << t_predict_pos << endl;
+        cout << "(3) Neighbor time: " << t_neighbors << endl;
+        cout << "(4) Lambda time:   " << t_lambda << endl;
+        cout << "(5) Update p time: " << t_update << endl;
+        cout << "///////////////////" << endl;
     double t_init = glfwGetTime()-t0;
     double t_predict_pos = 0.0f;
     double t_neighbors = 0.0f;
@@ -169,20 +177,18 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 float Solver::poly6_kernel(const glm::vec3& r)
 {
     float r2 = glm::length2(r);
-    const float base = m_h2-r2;
     if (r2 < m_h2)
-        return m_poly6_factor * glm::pow(base, 3);
+        return m_poly6_factor * glm::pow(m_h2-r2, 3);
     else
-        return  0.0f;
+        return 0.0f;
 }
 
-float Solver::poly6_kernel(const float r)
+float Solver::poly6_kernel(const float r2)
 {
-    const float base = m_h2-r*r;
-    if (r < m_h) // (base < 1e-4)
-        return m_poly6_factor * glm::pow(base, 3);
+    if (r2 < m_h2)
+        return m_poly6_factor * glm::pow(m_h2-r2, 3);
     else
-        return  0.0f;
+        return 0.0f;
 }
 
 glm::vec3 Solver::spiky_grad_kernel(const glm::vec3& r)
@@ -193,4 +199,14 @@ glm::vec3 Solver::spiky_grad_kernel(const glm::vec3& r)
 
     float scale = (m_spiky_factor * glm::pow(m_h - len, 2)) / len;
     return scale*r;
+}
+
+float Solver::spiky_grad_norm2(const float r2)
+{
+    float len = glm::sqrt(r2);
+    if (len > m_h || len < 1e-5)
+        return 0.0f;
+
+    float scale = (m_spiky_factor * glm::pow(m_h - len, 2))/ len;
+    return scale*scale;
 }
