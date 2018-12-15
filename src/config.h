@@ -35,7 +35,7 @@ struct Config
  */
 const float kNear = 0.1f;
 const float kFar = 1000.0f;
-const float kFov = 45.0f;
+const float kFov = 70.0f;
 
 // Floor info.
 const float kFloorEps = 0.5 * (0.025 + 0.0175);

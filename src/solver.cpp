@@ -67,18 +67,12 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 
             // gradient accumulation
             glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
-            grad_Ci_norm2 -= glm::length2(tmp_grad);
+            grad_Ci_norm2 += glm::length2(tmp_grad);
             grad_Ci_i += tmp_grad;
         }
         float C_i = density_i/m_rest_density - 1.0f;
-        grad_Ci_norm2 += glm::length2(grad_Ci_i);
+        grad_Ci_norm2 -= glm::length2(grad_Ci_i);
         lambdas[i] = -C_i/(grad_Ci_norm2 + m_cfm_epsilon);
-        //if (lambdas[i] != 0) {
-        //    std::cout << lambdas[i] << std::endl;
-        //    std::cout << "C_i:" << C_i << std::endl;
-        //    std::cout << "rho_i:" << density_i << std::endl;
-  
-        //}    
     }
 
     // Update position and velocity
@@ -109,10 +103,9 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         // handle collisions
         if (particle.p.y < 0.0f)
         {
-            float penaltyStiffness = 1e5;
-            particle.v += m_timestep*glm::vec3(0.0f, penaltyStiffness*particle.p.y*particle.p.y, 0);
-            //particle.v *= 0.1f;
-
+            float penaltyStiffness = 1e3;
+            //particle.v += m_timestep*glm::vec3(0.0f, penaltyStiffness*particle.p.y*particle.p.y, 0);
+            particle.p.y = 0.0f;
         }
 
     }
