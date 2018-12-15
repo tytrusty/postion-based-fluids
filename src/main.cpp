@@ -196,10 +196,8 @@ int main(int, char**)
     // Particle pass
     RenderDataInput particle_pass_input;
     particle_pass_input.assign(0, "vertex_position", g_vertex_buffer_data, sizeof(g_vertex_buffer_data), 3, GL_FLOAT, GL_FALSE);
-    particle_pass_input.assign(1, "particle_position", nullptr,
-            nparticles*3*sizeof(GLfloat), 3, GL_FLOAT, GL_FALSE);
-    particle_pass_input.assign(2, "particle_color", nullptr,
-            nparticles*4*sizeof(GLubyte), 4, GL_UNSIGNED_BYTE, GL_TRUE);
+    particle_pass_input.assign(1, "particle_position", nullptr, nparticles*3*sizeof(GLfloat), 3, GL_FLOAT, GL_FALSE);
+    particle_pass_input.assign(2, "particle_color", nullptr, nparticles*4*sizeof(GLubyte), 4, GL_UNSIGNED_BYTE, GL_TRUE);
     RenderPass particle_pass(-1,
             particle_pass_input,
             { particle_vertex_shader, nullptr, particle_fragment_shader},
@@ -217,17 +215,35 @@ int main(int, char**)
         ImGui_ImplGlfwGL3_NewFrame();
         
         solver->step(particles, grid);
+       
+        for (int i = 0; i < nparticles; ++i)
+        {
+            const Particle& p = particles[i];
+            particle_position_data[3*i+0] = p.p.x;
+            particle_position_data[3*i+1] = p.p.y;
+            particle_position_data[3*i+2] = p.p.z;
+        }
 
         // 1. Show a simple window
-        // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
         {
-            static float f = 0.0f;
-            ImGui::Text("Hello, world!");
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-            ImGui::ColorEdit3("clear color", (float*)&clear_color);
+            ImGui::SetNextWindowSize(ImVec2(480,350), ImGuiSetCond_FirstUseEver);
+            ImGui::Begin("Simulation Parameters");
+            ImGui::SliderInt("Number of Particles", &config->nparticles, 1, 100000);
+            ImGui::SliderInt("Solver Iterations", &config->solver_iters, 1, 100);
+            ImGui::SliderFloat("Particle Radius", &config->particle_radius, 0.1f, 10.0f);
+            ImGui::SliderFloat("Timestep", &config->timestep, 0.0001f, 1.0f);
+            ImGui::SliderFloat("Hash Grid Cell Width", &config->grid_cell_width, 0.1f, 10.0f);
+            ImGui::SliderFloat("Smoothing Radius (h)", &config->smoothing_radius, 0.0f, 3.0f);
+            ImGui::SliderFloat("Kernel Radius", &config->kernel_radius, 0.01f, 10.0f);
+            ImGui::SliderFloat("Particle Rest Density", &config->rest_density, 0.1f, 100000.0f);
+            ImGui::SliderFloat("Particle Mass", &config->particle_mass, 0.1f, 10.0f);
+            ImGui::SliderFloat("CFM Epsilon", &config->cfm_epsilon, 0.1f, 10000.0f);
+
+            ImGui::ColorEdit3("Clear Color", (float*)&clear_color);
             if (ImGui::Button("Test Window")) show_test_window ^= 1;
             if (ImGui::Button("Another Window")) show_another_window ^= 1;
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::End();
         }
 
         // 2. Show another simple window, this time using an explicit Begin/End pair

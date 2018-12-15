@@ -37,15 +37,15 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
     std::vector<std::vector<int>> particle_neighbors(nparticles);
     // std::vector<glm::vec3> gradients;
 
-
     // Compute Lambdas First
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
 
-        // 1. Apply external forces
+        // 1. Apply external forces and predict position 
         {
             particle.p_old = particle.p;
+            particle.v += m_timestep*glm::vec3(0.0f,-9.8f, 0.0f); // "gravity"
             particle.p += m_timestep*particle.v;
         }
 
@@ -67,7 +67,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 
             // gradient accumulation
             glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
-            grad_Ci_norm2 += glm::length2(tmp_grad);
+            grad_Ci_norm2 -= glm::length2(tmp_grad);
             grad_Ci_i += tmp_grad;
         }
         float C_i = density_i/m_rest_density - 1.0f;
@@ -100,10 +100,21 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         dp /= m_rest_density;
 
         particle.p += dp;
-        if (dp != glm::vec3(0,0,0))
-        std::cout << "dp_" << i << ": " << glm::to_string(dp) << std::endl;
+        //if (dp != glm::vec3(0,0,0))
+        //if (i % 200 == 0)
+        //std::cout << "dp_" << i << ": " << glm::to_string(dp) << std::endl;
 
         particle.v = (particle.p - particle.p_old) / m_timestep;
+
+        // handle collisions
+        if (particle.p.y < 0.0f)
+        {
+            float penaltyStiffness = 1e5;
+            particle.v += m_timestep*glm::vec3(0.0f, penaltyStiffness*particle.p.y*particle.p.y, 0);
+            //particle.v *= 0.1f;
+
+        }
+
     }
 }
 

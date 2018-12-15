@@ -3,7 +3,7 @@ R"zzz(
 
 // Interpolated values from the vertex shaders
 in vec2 UV;
-flat in vec4 color;
+in vec3 color;
 
 // Ouput data
 out vec4 fragment_color;
@@ -30,7 +30,7 @@ void main(){
 	vec3 normal = normalize(vec3(ndc, normalized_depth));
     vec3 pos = normal*radius + gl_FragCoord.xyz;
     vec3 light_dir = normalize(vec3(light_position) - pos);
-	vec3 final_color = vec3(color) ; //vec3(1.0, 0.0, 0.0);
+	vec3 final_color = color;
 
 	// ambient
 	float lightingIntensity = 0.3 + 0.7 * clamp(dot(light_dir, normal), 0.0, 1.0);

@@ -9,10 +9,10 @@ struct Config
         grid_cell_width  = 5.0f;
         smoothing_radius = 1.0f; 
         kernel_radius    = 1.0f; 
-        rest_density     = 1.0f;
+        rest_density     = 80000.0f;
         particle_mass    = 1.0f;
-        cfm_epsilon      = 0.1f;
-        timestep         = 0.01f;
+        cfm_epsilon      = 5000.1f;
+        timestep         = 0.001f;
         nparticles   = 1000;
         solver_iters = 1;
     }
@@ -26,8 +26,8 @@ struct Config
     float particle_mass;    // SPH particle mass
     float cfm_epsilon;      // constraint force mixing epsilon for PBF
     float timestep;         // simulation timestep 
-    size_t nparticles;      // number of particles
-    size_t solver_iters;    // simulation step solver iterations
+    int nparticles;         // number of particles
+    int solver_iters;       // simulation step solver iterations
 };
 
 /*

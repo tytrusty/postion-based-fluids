@@ -6,7 +6,7 @@ in vec3 particle_position;
 in vec4 particle_color;
 
 out vec2 UV;
-flat out vec4 color;
+out vec3 color;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -26,6 +26,6 @@ void main()
 	gl_Position = projection * view * vec4(vertex_world, 1.0f);
 
 	UV = vertex_position.xy + vec2(0.5, 0.5);
-	color = particle_color;
+	color = vec3(particle_color);
 }
 )zzz"
