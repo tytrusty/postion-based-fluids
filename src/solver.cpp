@@ -1,6 +1,8 @@
 #include "solver.h"
 #include "hash_grid.h"
 
+#include <GLFW/glfw3.h>
+
 #include <glm/gtx/norm.hpp>
 #include <glm/ext.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -15,7 +17,7 @@ Solver::Solver(std::shared_ptr<Config> config)
 void Solver::update_params()
 {
     m_h             = m_config->smoothing_radius;
-    m_h2            = m_h*m_h2;
+    m_h2            = m_h*m_h;
     m_timestep      = m_config->timestep;
     m_cfm_epsilon   = m_config->cfm_epsilon;;
     m_poly6_factor  = get_poly6_factor(m_h);
@@ -27,21 +29,29 @@ void Solver::update_params()
     m_kernel_radius = m_config->kernel_radius;
 }
 
+static int step_cnt = 0;
 void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> hash_grid)
 {
+    step_cnt++;
+    double t0 = glfwGetTime();
+
     const int nparticles = particles.size();
     update_params(); // update simulation paramters
 
-    // TODO make into member
     std::vector<float> lambdas(nparticles);
     std::vector<std::vector<int>> particle_neighbors(nparticles);
     // std::vector<glm::vec3> gradients;
+    double t_init = glfwGetTime()-t0;
+    double t_predict_pos = 0.0f;
+    double t_neighbors = 0.0f;
+    double t_lambda = 0.0f;
+    double t_update = 0.0f;
 
     // Compute Lambdas First
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
-
+        t0 = glfwGetTime(); 
         // 1. Apply external forces and predict position 
         {
             particle.p_old = particle.p;
@@ -49,10 +59,16 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
             particle.p += m_timestep*particle.v;
             // std::cout << "p.v." << glm::to_string(particle.v) << std::endl;
         }
+        t_predict_pos += glfwGetTime()-t0;
 
+
+        t0 = glfwGetTime();
         // 2. Find all neighbors
         std::vector<int> neighbors = hash_grid->find_neighbors(particle.id, particles, m_kernel_radius);
         particle_neighbors[i] = neighbors;
+
+        t_neighbors += glfwGetTime()-t0;
+        t0 = glfwGetTime();
 
         // 3. Compute Lambda
         float grad_Ci_norm2 = 0.0f;
@@ -68,12 +84,18 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 
             // gradient accumulation
             glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
-            grad_Ci_norm2 += glm::length2(tmp_grad);  //negate
+            grad_Ci_norm2 -= glm::length2(tmp_grad);  //negate
             grad_Ci_i += tmp_grad;
         }
+        // std::cout << "density_i: " << density_i << std::endl;
         float C_i = density_i/m_rest_density - 1.0f;
+        //particle.r = 0.0f;
+        //particle.g = 0.0f;
+        //particle.b = density_i/m_rest_density*256;
         grad_Ci_norm2 += glm::length2(grad_Ci_i);
         lambdas[i] = -C_i/(grad_Ci_norm2 + m_cfm_epsilon);
+        t_lambda += glfwGetTime()-t0;
+        t0 = glfwGetTime();
     }
 
     // Update position and velocity
@@ -82,6 +104,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
     const float dq = m_config->artificial_pressure_dq;
     const float c = m_config->viscosity_c; 
 
+    t0 = glfwGetTime();
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
@@ -120,7 +143,26 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         // Update velocity 
         particle.v = (particle.p - particle.p_old) / m_timestep;
 
-        // particle.v += c*viscosity;
+        //particle.v += c*viscosity;
+    }
+    t_update = glfwGetTime()-t0;
+
+    ///// Diagnostics /////
+    if (step_cnt % 10 == 0)
+    {
+        std::cout << "///////////////////" << std::endl;
+        std::cout << "(1) Init time:     " << t_init << std::endl;
+        std::cout << "(2) Predict time:  " << t_predict_pos << std::endl;
+        std::cout << "(3) Neighbor time: " << t_neighbors << std::endl;
+        std::cout << "(4) Lambda time:   " << t_lambda << std::endl;
+        std::cout << "(5) Update p time: " << t_update << std::endl;
+        std::cout << "///////////////////" << std::endl;
+    double t_init = glfwGetTime()-t0;
+    double t_predict_pos = 0.0f;
+    double t_neighbors = 0.0f;
+    double t_lambda = 0.0f;
+    double t_update = 0.0f;
+
     }
 }
 

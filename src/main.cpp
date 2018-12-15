@@ -120,15 +120,15 @@ void create_fluid_cube(std::vector<Particle>& particles,
 
                 particles[n].p = start;
                 particles[n].v = glm::vec3(0.0f);
-                particles[n].r = rand() % 256;
-                particles[n].g = rand() % 256;
-                particles[n].b = rand() % 256;
+                particles[n].r = 0; //rand() % 256;
+                particles[n].g = 0; //rand() % 256;
+                particles[n].b = 255; //rand() % 256;
                 particles[n].a = (rand() % 256)/3;
 
-                color_data[4*n+0] = particles[i].r;
-                color_data[4*n+1] = particles[i].g;
-                color_data[4*n+2] = particles[i].b;
-                color_data[4*n+3] = particles[i].a;
+                color_data[4*n+0] = particles[n].r;
+                color_data[4*n+1] = particles[n].g;
+                color_data[4*n+2] = particles[n].b;
+                color_data[4*n+3] = particles[n].a;
                 ++n;
             }
         }
@@ -229,6 +229,9 @@ int main(int, char**)
             particle_position_data[3*i+0] = p.p.x;
             particle_position_data[3*i+1] = p.p.y;
             particle_position_data[3*i+2] = p.p.z;
+            //particle_color_data[4*i+0] = particles[i].r;
+            //particle_color_data[4*i+1] = particles[i].g;
+            //particle_color_data[4*i+2] = particles[i].b;
         }
 
         gui.setup();

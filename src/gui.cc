@@ -33,14 +33,14 @@ void GUI::setup()
     ImGui::Begin("Simulation Parameters");
     ImGui::SliderInt("Solver Iterations", &config->solver_iters, 1, 100);
     ImGui::SliderFloat("Particle Radius", &config->particle_radius, 0.1f, 10.0f);
-    ImGui::SliderFloat("Timestep", &config->timestep, 0.0001f, 1.0f);
+    ImGui::InputFloat("Timestep", &config->timestep, 0.0001f, 1.0f);
     ImGui::SliderFloat("Hash Grid Cell Width", &config->grid_cell_width, 0.1f, 10.0f);
-    ImGui::SliderFloat("Smoothing Radius (h)", &config->smoothing_radius, 0.0f, 3.0f);
+    ImGui::SliderFloat("Smoothing Radius (h)", &config->smoothing_radius, 0.0f, 30.0f);
     ImGui::SliderFloat("Kernel Radius", &config->kernel_radius, 0.01f, 10.0f);
     ImGui::SliderFloat("Particle Rest Density", &config->rest_density, 0.1f, 100000.0f);
     ImGui::SliderFloat("Particle Mass", &config->particle_mass, 0.1f, 10.0f);
     ImGui::SliderFloat("CFM Epsilon", &config->cfm_epsilon, 0.1f, 10000.0f);
-    ImGui::SliderFloat("Viscosity Scale", &config->viscosity_c, 0.000001f, 2.0f);
+    ImGui::InputFloat("Viscosity Scale (c)", &config->viscosity_c, 0.00000001f, 2.0f);
     ImGui::SliderFloat("Artificial pressure (k)", &config->artificial_pressure_k, 0.00001f, 5.0f);
     ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
     ImGui::SliderFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
