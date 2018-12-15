@@ -9,9 +9,9 @@ struct Config
     {
         particle_radius  = 0.2f;
         grid_cell_width  = 1.0f;
-        smoothing_radius = 2.0f; 
-        kernel_radius    = 1.2f; 
-        rest_density     = 60.0f; // 63780.0f;
+        smoothing_radius = 1.0f; 
+        kernel_radius    = 0.7f; 
+        rest_density     = 90.0f; // 63780.0f;
         particle_mass    = 1.0f;
         cfm_epsilon      = 100.0f; // 6000.0f;
         timestep         = 0.016f;
@@ -20,7 +20,7 @@ struct Config
         artificial_pressure_dq = 0.03f;
         artificial_pressure_n  = 4;
         solver_iters = 4;
-        fluid_dim = glm::ivec3(10,30,10);
+        fluid_dim = glm::ivec3(10,100,10);
     }
 
     // Simulation Parameters

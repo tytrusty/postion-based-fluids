@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <memory>
+#include <omp.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -147,7 +148,7 @@ int main(int, char**)
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, false);
 
-    glm::vec4 light_position = glm::vec4(0.0f, 10.0f, 0.0f, 1.0f);
+    glm::vec4 light_position = glm::vec4(3.0f, 20.0f, 0.0f, 1.0f);
     MatrixPointers mats;
 
     std::vector<glm::vec4> floor_vertices;
@@ -205,6 +206,12 @@ int main(int, char**)
     grid->init(particles);
     std::cout << "Enterring main loop" << std::endl;
 
+    std::cout << "OMP max threads: " << omp_get_max_threads() << std::endl;
+    #pragma omp parallel
+    {
+        // dummy parallel region to spin up threads
+    }
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -229,9 +236,9 @@ int main(int, char**)
             particle_position_data[3*i+0] = p.p.x;
             particle_position_data[3*i+1] = p.p.y;
             particle_position_data[3*i+2] = p.p.z;
-            //particle_color_data[4*i+0] = particles[i].r;
-            //particle_color_data[4*i+1] = particles[i].g;
-            //particle_color_data[4*i+2] = particles[i].b;
+            particle_color_data[4*i+0] = particles[i].r;
+            particle_color_data[4*i+1] = particles[i].g;
+            particle_color_data[4*i+2] = particles[i].b;
         }
 
         gui.setup();

@@ -8,6 +8,7 @@
 #include <glm/gtx/string_cast.hpp>
 
 #include <iostream>
+#include <omp.h>
 
 using namespace std; // haters gonna hate
 
@@ -49,7 +50,13 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
     double t_lambda = 0.0f;
     double t_update = 0.0f;
 
+    double t_total_lambda = 0.0f;
+    double t_total0 = glfwGetTime();
+
     // Compute Lambdas First
+    #pragma omp parallel
+    {
+    #pragma omp for 
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
@@ -87,21 +94,21 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
             density_i += m_particle_mass * poly6_kernel(distsqr); 
 
             // gradient accumulation
-            glm::vec3 tmp_grad = spiky_grad_kernel(diff); ///m_rest_density;
+            glm::vec3 tmp_grad = spiky_grad_kernel(diff);
             grad_Ci_norm2 -= glm::length2(tmp_grad);  
             grad_Ci_i += tmp_grad;
         }
-        // cout << "density_i: " << density_i << endl;
         float C_i = density_i/m_rest_density - 1.0f;
         //particle.r = 0.0f;
         //particle.g = 0.0f;
-        //particle.b = density_i/m_rest_density*256;
+        //particle.b = glm::clamp<int>((C_i+0.7)*256, 0, 256);
         grad_Ci_norm2 += glm::length2(grad_Ci_i);
-        lambdas[i] = -C_i/((grad_Ci_norm2/m_rest_density) + m_cfm_epsilon);
+        lambdas[i] = -C_i/((grad_Ci_norm2/m_rest_density2) + m_cfm_epsilon);
 
         t_lambda += glfwGetTime()-t0;
         t0 = glfwGetTime();
     }
+    t_total_lambda = glfwGetTime() - t_total0;
 
     // Update position and velocity
     const float k  = m_config->artificial_pressure_k;    
@@ -110,6 +117,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
     const float c = m_config->viscosity_c; 
 
     t0 = glfwGetTime();
+    #pragma omp for 
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
@@ -141,7 +149,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
 
         // boundary conditions
         float bound = m_config->particle_radius*20.0f;
-        if (particle.p.y > bound) particle.p.y = bound;
+        if (particle.p.y > bound*3) particle.p.y = bound*3;
         if (particle.p.y < 0.0f) particle.p.y = 0.0f;
         if (particle.p.x > bound) particle.p.x = bound;
         if (particle.p.x < 0.0f) particle.p.x = 0.0f;
@@ -154,6 +162,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
         //particle.v += c*viscosity;
     }
     t_update = glfwGetTime()-t0;
+    }
 
     ///// Diagnostics /////
     if (step_cnt % 10 == 0)
@@ -163,6 +172,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
         cout << "(2) Predict time:  " << t_predict_pos << endl;
         cout << "(3) Neighbor time: " << t_neighbors << endl;
         cout << "(4) Lambda time:   " << t_lambda << endl;
+        cout << "(5) Total lambda:  " << t_total_lambda << endl;
         cout << "(5) Update p time: " << t_update << endl;
         cout << "///////////////////" << endl;
     double t_init = glfwGetTime()-t0;

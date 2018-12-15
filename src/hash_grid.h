@@ -20,7 +20,7 @@ public:
     {}
 
     void update_cell_width(float cell_width) { m_cell_width = cell_width; }
-
+    
     void init(const std::vector<Particle>& particles)
     {
         bins.clear();
