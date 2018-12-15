@@ -5,21 +5,18 @@
 #include <algorithm>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_glfw_gl3.h>
-
-GUI::GUI(GLFWwindow* window)
-    :window_(window)
+GUI::GUI(GLFWwindow* window, std::shared_ptr<Config> config)
+    :window_(window), config(config)
 {
     glfwSetWindowUserPointer(window_, this);
     glfwSetKeyCallback(window_, KeyCallback);
     glfwSetCursorPosCallback(window_, MousePosCallback);
     glfwSetMouseButtonCallback(window_, MouseButtonCallback);
     glfwSetCharCallback(window, ImGui_ImplGlfwGL3_CharCallback);
-
     glfwGetWindowSize(window_, &window_width_, &window_height_);
     view_width_ = window_width_;
     view_height_ = window_height_;
@@ -29,6 +26,39 @@ GUI::GUI(GLFWwindow* window)
 
 GUI::~GUI()
 {}
+
+void GUI::setup()
+{
+    ImGui::SetNextWindowSize(ImVec2(480,350), ImGuiSetCond_FirstUseEver);
+    ImGui::Begin("Simulation Parameters");
+    ImGui::SliderInt("Solver Iterations", &config->solver_iters, 1, 100);
+    ImGui::SliderFloat("Particle Radius", &config->particle_radius, 0.1f, 10.0f);
+    ImGui::SliderFloat("Timestep", &config->timestep, 0.0001f, 1.0f);
+    ImGui::SliderFloat("Hash Grid Cell Width", &config->grid_cell_width, 0.1f, 10.0f);
+    ImGui::SliderFloat("Smoothing Radius (h)", &config->smoothing_radius, 0.0f, 3.0f);
+    ImGui::SliderFloat("Kernel Radius", &config->kernel_radius, 0.01f, 10.0f);
+    ImGui::SliderFloat("Particle Rest Density", &config->rest_density, 0.1f, 100000.0f);
+    ImGui::SliderFloat("Particle Mass", &config->particle_mass, 0.1f, 10.0f);
+    ImGui::SliderFloat("CFM Epsilon", &config->cfm_epsilon, 0.1f, 10000.0f);
+    ImGui::SliderFloat("Viscosity Scale", &config->viscosity_c, 0.000001f, 2.0f);
+    ImGui::SliderFloat("Artificial pressure (k)", &config->artificial_pressure_k, 0.00001f, 5.0f);
+    ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
+    ImGui::SliderFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
+    ImGui::InputInt3("Fluid Cube Dim", glm::value_ptr(config->fluid_dim));
+    
+    ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
+    if (ImGui::Button("Start/Stop")) pause_simulation_ ^= 1;
+    if (ImGui::Button("Reset")) reset_simulation_ ^= 1;
+    if (ImGui::Button("Test Window")) show_test_window_ ^= 1;
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
+
+    if (show_test_window_)
+    {
+        ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
+        ImGui::ShowTestWindow(&show_test_window_);
+    }
+}
 
 void GUI::keyCallback(int key, int scancode, int action, int mods)
 {
@@ -93,8 +123,7 @@ void GUI::updateMatrices()
     light_position_ = glm::vec4(eye_, 1.0f);
 
     aspect_ = static_cast<float>(view_width_) / view_height_;
-    projection_matrix_ =
-        glm::perspective((float)(kFov * (M_PI / 180.0f)), aspect_, kNear, kFar);
+    projection_matrix_ = glm::perspective((float)(kFov * (M_PI / 180.0f)), aspect_, kNear, kFar);
     model_matrix_ = glm::mat4(1.0f);
 }
 
@@ -155,8 +184,6 @@ void GUI::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int
 {
     GUI* gui = (GUI*)glfwGetWindowUserPointer(window);
     gui->keyCallback(key, scancode, action, mods);
-        //glfwSetMouseButtonCallback(window, ImGui_ImplGlfwGL3_MouseButtonCallback);
-        //glfwSetScrollCallback(window, ImGui_ImplGlfwGL3_ScrollCallback);
     ImGui_ImplGlfwGL3_KeyCallback(window,key,scancode,action,mods);
 }
 

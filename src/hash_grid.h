@@ -23,6 +23,7 @@ public:
 
     void init(const std::vector<Particle>& particles)
     {
+        bins.clear();
         for (const auto& p : particles)
             insert_particle(p);
     }

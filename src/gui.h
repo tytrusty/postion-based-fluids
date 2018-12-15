@@ -5,15 +5,23 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <GLFW/glfw3.h>
 
+#include <memory>
+
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw_gl3.h>
+
+#include "config.h"
+
 struct MatrixPointers {
     const glm::mat4 *projection, *model, *view;
 };
 
 class GUI {
 public:
-    GUI(GLFWwindow*);
+    GUI(GLFWwindow*, std::shared_ptr<Config>);
     ~GUI();
 
+    void setup();
     void keyCallback(int key, int scancode, int action, int mods);
     void mousePosCallback(double mouse_x, double mouse_y);
     void mouseButtonCallback(int button, int action, int mods);
@@ -29,9 +37,14 @@ public:
     const float* getLightPositionPtr() const { return &light_position_[0]; }
 
     bool isTransparent() const { return transparent_; }
+    bool isPaused() const { return pause_simulation_; }
+    bool isResetting() const { return reset_simulation_; }
+    void setReset(bool reset) { reset_simulation_ = reset; }
+    ImVec4 getClearColor() const { return clear_color_; }
 
 private:
     GLFWwindow* window_;
+    std::shared_ptr<Config> config;
 
     int window_width_, window_height_;
     int view_width_, view_height_;
@@ -48,6 +61,10 @@ private:
     float rotation_speed_ = 0.02f;
     float zoom_speed_ = 0.1f;
     float aspect_;
+    bool pause_simulation_ = true;
+    bool reset_simulation_ = false;
+    bool show_test_window_ = false;
+    ImVec4 clear_color_ = ImColor(114, 144, 154);
 
     glm::vec3 eye_ = glm::vec3(0.0f, 3.1f, camera_distance_);
     glm::vec3 up_ = glm::vec3(0.0f, 1.0f, 0.0f);

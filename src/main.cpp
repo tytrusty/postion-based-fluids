@@ -9,8 +9,6 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw_gl3.h>
 
-#include <Eigen/Dense>
-
 #include "hash_grid.h"
 #include "render_pass.h"
 #include "gui.h"
@@ -20,6 +18,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 static void error_callback(int error, const char* description)
 {
@@ -42,11 +41,9 @@ const char* fragment_shader =
 const char* floor_fragment_shader =
 #include "shaders/floor.frag"
 ;
-
 const char* particle_vertex_shader =
 #include "shaders/particle.vert"
 ;
-
 const char* particle_fragment_shader =
 #include "shaders/particle.frag"
 ;
@@ -94,18 +91,30 @@ static const GLfloat g_vertex_buffer_data[] = {
 };
 
 void create_fluid_cube(std::vector<Particle>& particles,
-        GLfloat* position_data, GLubyte* color_data, float particle_radius)
+        GLfloat*& position_data, GLubyte*& color_data, std::shared_ptr<Config> c)
 {
+    glm::ivec3 dim = c->fluid_dim;
+    int nparticles = dim[0]*dim[1]*dim[2];
+
+    // If particle count changes, resize buffers
+    if (nparticles != particles.size())
+    {
+        particles.resize(nparticles, Particle());
+        for (int i = 0; i < nparticles; ++i) { particles[i].id = i; }
+        position_data = new GLfloat[nparticles*3];
+        color_data    = new GLubyte[nparticles*4];
+    }
+
     glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
-    float step = particle_radius;
+    float step = c->particle_radius;
     int n = 0;
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < dim[0]; ++i)
     {
         start.x = step*i;
-        for (int j = 0; j < 10; ++j)
+        for (int j = 0; j < dim[1]; ++j)
         {
             start.y = step*j;
-            for (int k = 0; k < 10; ++k)
+            for (int k = 0; k < dim[2]; ++k)
             {
                 start.z = step*k;
 
@@ -115,10 +124,6 @@ void create_fluid_cube(std::vector<Particle>& particles,
                 particles[n].g = rand() % 256;
                 particles[n].b = rand() % 256;
                 particles[n].a = (rand() % 256)/3;
-
-                position_data[3*n+0] = start.x;
-                position_data[3*n+1] = start.y;
-                position_data[3*n+2] = start.z;
 
                 color_data[4*n+0] = particles[i].r;
                 color_data[4*n+1] = particles[i].g;
@@ -130,19 +135,17 @@ void create_fluid_cube(std::vector<Particle>& particles,
     }
 }
 
+static GLfloat* particle_position_data;
+static GLubyte* particle_color_data;    
 
 int main(int, char**)
 {
     GLFWwindow* window = init_glefw();  
-    GUI gui(window);
-
     std::shared_ptr<Config> config = std::make_shared<Config>();
+    GUI gui(window, config);
 
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, false);
-
-    bool show_test_window = false;
-    ImVec4 clear_color = ImColor(114, 144, 154);
 
     glm::vec4 light_position = glm::vec4(0.0f, 10.0f, 0.0f, 1.0f);
     MatrixPointers mats;
@@ -151,15 +154,8 @@ int main(int, char**)
     std::vector<glm::uvec3> floor_faces;
     create_floor(floor_vertices, floor_faces);
 
-    //---------------------------------------//
-    // Particle Temp
-    const int nparticles  = config->nparticles;;
-    float particle_radius = config->particle_radius;
-    std::vector<Particle> particles(nparticles, Particle());
-    for (int i = 0; i < nparticles; ++i) { particles[i].id = i; }  // set ID
-    static GLfloat* particle_position_data = new GLfloat[nparticles*3];
-    static GLubyte* particle_color_data    = new GLubyte[nparticles*4];
-    //---------------------------------------//
+    int nparticles = config->fluid_dim[0]*config->fluid_dim[1]*config->fluid_dim[2];
+    std::vector<Particle> particles;
 
     // Setup uniforms
     std::function<const glm::mat4*()> model_data = [&mats]() { return mats.model; };
@@ -169,7 +165,7 @@ int main(int, char**)
     std::function<glm::vec3()> cam_data = [&gui](){ return gui.getCamera(); };
     std::function<glm::vec4()> lp_data = [&light_position]() { return light_position; };
     std::function<float()> alpha_data = [&gui]() { return gui.isTransparent() ? 0.5 : 1.0; };
-    std::function<float()> radius_data = [&particle_radius]() { return particle_radius; };
+    std::function<float()> radius_data = [&config]() { return config->particle_radius; };
 
     auto std_model = std::make_shared<ShaderUniform<const glm::mat4*>>("model", model_data);
     auto floor_model = make_uniform("model", identity_mat);
@@ -191,7 +187,6 @@ int main(int, char**)
             { "fragment_color" }
             );
 
-
     // Particle pass
     RenderDataInput particle_pass_input;
     particle_pass_input.assign(0, "vertex_position", g_vertex_buffer_data, sizeof(g_vertex_buffer_data), 3, GL_FLOAT, GL_FALSE);
@@ -204,27 +199,28 @@ int main(int, char**)
             { "fragment_color" }
             );
 
-    create_fluid_cube(particles, particle_position_data, particle_color_data, particle_radius);
+    create_fluid_cube(particles, particle_position_data, particle_color_data, config);
     std::shared_ptr<Solver> solver = std::make_shared<Solver>(config);
     std::shared_ptr<HashGrid> grid = std::make_shared<HashGrid>(config->grid_cell_width);
     grid->init(particles);
-
-    bool pause_simulation = true;
-    bool reset_simulation = false;
+    std::cout << "Enterring main loop" << std::endl;
 
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         ImGui_ImplGlfwGL3_NewFrame();
 
-        if (reset_simulation)
+        grid->update_cell_width(config->grid_cell_width);
+        grid->init(particles);
+
+        if (gui.isResetting())
         {
-            particle_radius = config->particle_radius;
-            create_fluid_cube(particles, particle_position_data, particle_color_data, particle_radius);
-            reset_simulation = false;
+            create_fluid_cube(particles, particle_position_data, particle_color_data, config);
+            nparticles = config->fluid_dim[0]*config->fluid_dim[1]*config->fluid_dim[2];
+            gui.setReset(false);
         }
 
-        if (!pause_simulation) 
+        if (!gui.isPaused()) 
             solver->step(particles, grid);
        
         for (int i = 0; i < nparticles; ++i)
@@ -235,39 +231,8 @@ int main(int, char**)
             particle_position_data[3*i+2] = p.p.z;
         }
 
-        // 1. Show a simple window
-        {
-            ImGui::SetNextWindowSize(ImVec2(480,350), ImGuiSetCond_FirstUseEver);
-            ImGui::Begin("Simulation Parameters");
-            ImGui::SliderInt("Number of Particles", &config->nparticles, 1, 100000);
-            ImGui::SliderInt("Solver Iterations", &config->solver_iters, 1, 100);
-            ImGui::SliderFloat("Particle Radius", &config->particle_radius, 0.1f, 10.0f);
-            ImGui::SliderFloat("Timestep", &config->timestep, 0.0001f, 1.0f);
-            ImGui::SliderFloat("Hash Grid Cell Width", &config->grid_cell_width, 0.1f, 10.0f);
-            ImGui::SliderFloat("Smoothing Radius (h)", &config->smoothing_radius, 0.0f, 3.0f);
-            ImGui::SliderFloat("Kernel Radius", &config->kernel_radius, 0.01f, 10.0f);
-            ImGui::SliderFloat("Particle Rest Density", &config->rest_density, 0.1f, 100000.0f);
-            ImGui::SliderFloat("Particle Mass", &config->particle_mass, 0.1f, 10.0f);
-            ImGui::SliderFloat("CFM Epsilon", &config->cfm_epsilon, 0.1f, 10000.0f);
-            ImGui::SliderFloat("Viscosity Scale", &config->viscosity_c, 0.000001f, 2.0f);
-            ImGui::SliderFloat("Artificial pressure (k)", &config->artificial_pressure_k, 0.00001f, 5.0f);
-            ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
-            ImGui::SliderFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
-
-            ImGui::ColorEdit3("Clear Color", (float*)&clear_color);
-            if (ImGui::Button("Start/Stop")) pause_simulation ^= 1;
-            if (ImGui::Button("Reset")) reset_simulation ^= 1;
-            if (ImGui::Button("Test Window")) show_test_window ^= 1;
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
-
-        // 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
-        if (show_test_window)
-        {
-            ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
-            ImGui::ShowTestWindow(&show_test_window);
-        }
+        gui.setup();
+        ImVec4 clear_color = gui.getClearColor();
 
         // Render Setup
         glfwGetFramebufferSize(window, &window_width, &window_height);

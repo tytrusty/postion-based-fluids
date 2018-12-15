@@ -47,6 +47,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
             particle.p_old = particle.p;
             particle.v += m_timestep*glm::vec3(0.0f,-9.8f, 0.0f); // "gravity"
             particle.p += m_timestep*particle.v;
+            // std::cout << "p.v." << glm::to_string(particle.v) << std::endl;
         }
 
         // 2. Find all neighbors
@@ -67,7 +68,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 
             // gradient accumulation
             glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
-            grad_Ci_norm2 -= glm::length2(tmp_grad); 
+            grad_Ci_norm2 += glm::length2(tmp_grad);  //negate
             grad_Ci_i += tmp_grad;
         }
         float C_i = density_i/m_rest_density - 1.0f;
@@ -96,11 +97,11 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 
             // s_corr
             float s_corr = 0.0f;
-            {
-                s_corr = -k*glm::pow(poly6_kernel(diff)/poly6_kernel(dq), n);
-            }
+            //{
+            //    s_corr = -k*glm::pow(poly6_kernel(diff)/poly6_kernel(dq), n);
+            //}
             dp += (lambdas[i]+lambdas[j]+s_corr)*spiky_grad_kernel(diff);
-            viscosity += poly6_kernel(diff)*diffv;
+            //viscosity += poly6_kernel(diff)*diffv;
         }
         dp /= m_rest_density;
         
@@ -108,7 +109,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         particle.p += dp;
 
         // boundary conditions
-        float bound = 1.0f;
+        float bound = m_config->particle_radius*20.0f;
         if (particle.p.y > bound) particle.p.y = bound;
         if (particle.p.y < 0.0f) particle.p.y = 0.0f;
         if (particle.p.x > bound) particle.p.x = bound;
@@ -119,7 +120,7 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
         // Update velocity 
         particle.v = (particle.p - particle.p_old) / m_timestep;
 
-        particle.v += c*viscosity;
+        // particle.v += c*viscosity;
     }
 }
 

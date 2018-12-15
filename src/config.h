@@ -1,24 +1,26 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <glm/glm.hpp>
+
 struct Config
 {
     Config()
     {
-        particle_radius  = 0.1f;
+        particle_radius  = 0.2f;
         grid_cell_width  = 5.0f;
-        smoothing_radius = 0.1f; 
+        smoothing_radius = 0.6f; // 2.0f; 
         kernel_radius    = 2.0f; 
-        rest_density     = 63780.0f;
+        rest_density     = 1.0f; // 63780.0f;
         particle_mass    = 1.0f;
-        cfm_epsilon      = 6000.0f;
+        cfm_epsilon      = 5.0f; // 6000.0f;
         timestep         = 0.016f;
         viscosity_c      = 0.0000001;
         artificial_pressure_k  = 0.0001f;
         artificial_pressure_dq = 0.03f;
         artificial_pressure_n  = 4;
-        nparticles   = 1000;
         solver_iters = 4;
+        fluid_dim = glm::ivec3(10,10,10);
     }
 
     // Simulation Parameters
@@ -34,8 +36,8 @@ struct Config
     float artificial_pressure_dq;
     int artificial_pressure_n;
     float viscosity_c;
-    int nparticles;         // number of particles
     int solver_iters;       // simulation step solver iterations
+    glm::ivec3 fluid_dim;
 };
 
 /*
