@@ -67,12 +67,13 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
 
             // gradient accumulation
             glm::vec3 tmp_grad = spiky_grad_kernel(diff)/m_rest_density;
-            grad_Ci_norm2 += glm::length2(tmp_grad);
+            grad_Ci_norm2 += glm::length2(tmp_grad); 
             grad_Ci_i += tmp_grad;
         }
         float C_i = density_i/m_rest_density - 1.0f;
-        grad_Ci_norm2 -= glm::length2(grad_Ci_i);
+        grad_Ci_norm2 += glm::length2(grad_Ci_i);
         lambdas[i] = -C_i/(grad_Ci_norm2 + m_cfm_epsilon);
+        // std::cout << "lambdas: " << lambdas[i] << std::endl;
     }
 
     // Update position and velocity
@@ -92,36 +93,52 @@ void Solver::step(std::vector<Particle>& particles, std::shared_ptr<HashGrid> ha
             dp += (lambdas[i]+lambdas[j])*spiky_grad_kernel(diff);
         }
         dp /= m_rest_density;
+        
 
         particle.p += dp;
-        //if (dp != glm::vec3(0,0,0))
         //if (i % 200 == 0)
-        //std::cout << "dp_" << i << ": " << glm::to_string(dp) << std::endl;
+        //if (dp != glm::vec3(0,0,0))
+        //    std::cout << "dp_" << i << ": " << glm::to_string(dp) << std::endl;
 
         particle.v = (particle.p - particle.p_old) / m_timestep;
 
         // handle collisions
+        if (particle.p.y > 4.0f) particle.p.y = 0.0f;
         if (particle.p.y < 0.0f)
         {
-            float penaltyStiffness = 1e3;
-            //particle.v += m_timestep*glm::vec3(0.0f, penaltyStiffness*particle.p.y*particle.p.y, 0);
+            // float penaltyStiffness = 1e2;
+            // particle.v += m_timestep*glm::vec3(0.0f, penaltyStiffness*particle.p.y*particle.p.y, 0);
             particle.p.y = 0.0f;
         }
+        if (particle.p.x > 4.0f)
+            particle.p.x = 4.0f;
+        if (particle.p.x < 0.0f)
+            particle.p.x = 0.0f;
+
+        if (particle.p.z > 4.0f)
+            particle.p.z = 4.0f;
+        if (particle.p.z < 0.0f)
+            particle.p.z = 0.0f;
 
     }
 }
 
 float Solver::poly6_kernel(const glm::vec3& r)
 {
-    //std::cout << "factor: " << m_poly6_factor << std::endl;
-    //std::cout << "m_h2 : " << m_h2 << std::endl;
-    //std::cout << "r: " << glm::to_string(r) << std::endl;
-    return m_poly6_factor * glm::pow(m_h2 - glm::length2(r), 3);
+    const float base = m_h2-glm::length2(r);
+    if (base < 1e-4)
+        return  0.0f;
+    else
+        return m_poly6_factor * glm::pow(base, 3);
 }
 
 glm::vec3 Solver::spiky_grad_kernel(const glm::vec3& r)
 {
-    float len = glm::length(r);
+    float len2 = glm::length2(r);
+    if (len2 <= 1e-4)// || len2 >= m_h2)
+        return glm::vec3(0.0f);
+
+    float len = glm::sqrt(len2);
     float scale = (m_spiky_factor * glm::pow(m_h - len, 2)) / len;
     return scale*r;
 }

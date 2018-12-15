@@ -160,7 +160,7 @@ int main(int, char**)
     // ----------------------------------------------------------------------//
     //                           Generate particle block                     //
     glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
-    float step = particle_radius*2;
+    float step = particle_radius;
     int n = 0;
     for (int i = 0; i < 10; ++i)
     {
@@ -209,12 +209,15 @@ int main(int, char**)
     std::shared_ptr<HashGrid> grid = std::make_shared<HashGrid>(config->grid_cell_width);
     grid->init(particles);
 
+    bool pause_simulation = true;
+
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         ImGui_ImplGlfwGL3_NewFrame();
-        
-        solver->step(particles, grid);
+        if (!pause_simulation) 
+            solver->step(particles, grid);
        
         for (int i = 0; i < nparticles; ++i)
         {
@@ -240,6 +243,7 @@ int main(int, char**)
             ImGui::SliderFloat("CFM Epsilon", &config->cfm_epsilon, 0.1f, 10000.0f);
 
             ImGui::ColorEdit3("Clear Color", (float*)&clear_color);
+            if (ImGui::Button("Start/Stop")) pause_simulation ^= 1;
             if (ImGui::Button("Test Window")) show_test_window ^= 1;
             if (ImGui::Button("Another Window")) show_another_window ^= 1;
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);

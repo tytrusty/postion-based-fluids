@@ -7,14 +7,14 @@ struct Config
     {
         particle_radius  = 0.2f;
         grid_cell_width  = 5.0f;
-        smoothing_radius = 1.0f; 
-        kernel_radius    = 1.0f; 
-        rest_density     = 80000.0f;
+        smoothing_radius = 0.1f; 
+        kernel_radius    = 2.0f; 
+        rest_density     = 63780.0f;
         particle_mass    = 1.0f;
-        cfm_epsilon      = 5000.1f;
-        timestep         = 0.001f;
+        cfm_epsilon      = 6000.0f;
+        timestep         = 0.016f;
         nparticles   = 1000;
-        solver_iters = 1;
+        solver_iters = 4;
     }
 
     // Simulation Parameters
