@@ -42,9 +42,9 @@ void GUI::setup()
     ImGui::SliderFloat("Particle Mass", &config->particle_mass, 0.1f, 10.0f);
     ImGui::SliderFloat("CFM Epsilon", &config->cfm_epsilon, 0.1f, 10000.0f);
     ImGui::InputFloat("Viscosity Scale (c)", &config->viscosity_c, 0.00000001f, 2.0f);
-    ImGui::SliderFloat("Artificial pressure (k)", &config->artificial_pressure_k, 0.00001f, 5.0f);
+    ImGui::InputFloat("Artificial pressure (k)", &config->artificial_pressure_k, 0.00001f, 5.0f);
     ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
-    ImGui::SliderFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
+    ImGui::InputFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
     ImGui::InputInt3("Fluid Cube Dim", glm::value_ptr(config->fluid_dim));
     
     ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);

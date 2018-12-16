@@ -16,8 +16,8 @@ struct Config
         cfm_epsilon      = 100.0f; // 6000.0f;
         timestep         = 0.016f;
         viscosity_c      = 0.001;
-        artificial_pressure_k  = 0.0001f;
-        artificial_pressure_dq = 0.03f;
+        artificial_pressure_k  = 0.01f;
+        artificial_pressure_dq = 0.0001f;
         artificial_pressure_n  = 4;
         solver_iters = 4;
         fluid_dim = glm::ivec3(6,60,20);

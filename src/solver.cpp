@@ -115,6 +115,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
     const float n  = m_config->artificial_pressure_n;
     const float dq = m_config->artificial_pressure_dq;
     const float c = m_config->viscosity_c; 
+    float dq_poly6 = poly6_kernel(dq);
 
     t0 = glfwGetTime();
     #pragma omp for schedule(dynamic, 1)
@@ -135,10 +136,9 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
 
             // s_corr
             float s_corr = 0.0f;
-            //{
-            //    s_corr = -k*glm::pow(poly6_kernel(diff)/poly6_kernel(dq), n);
-            // SQUARE dq?
-            //}
+            {
+                s_corr = -k*glm::pow(poly6_kernel(distsqr)/dq_poly6, n);
+            }
             dp += (lambdas[i]+lambdas[j]+s_corr)*spiky_grad_kernel(diff);
             viscosity += poly6_kernel(distsqr)*diffv;
         }
@@ -151,7 +151,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
         float bound = m_config->particle_radius*20.0f;
         if (particle.p.y > bound*3) particle.p.y = bound*3;
         if (particle.p.y < 0.0f) particle.p.y = 0.0f;
-        if (particle.p.x > bound) particle.p.x = bound;
+        if (particle.p.x > bound*2) particle.p.x = bound*2;
         if (particle.p.x < 0.0f) particle.p.x = 0.0f;
         if (particle.p.z > bound) particle.p.z = bound;
         if (particle.p.z < 0.0f) particle.p.z = 0.0f;
