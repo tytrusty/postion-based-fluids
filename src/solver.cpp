@@ -56,7 +56,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
     // Compute Lambdas First
     #pragma omp parallel
     {
-    #pragma omp for 
+    #pragma omp for schedule(dynamic, 1)
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
@@ -117,7 +117,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
     const float c = m_config->viscosity_c; 
 
     t0 = glfwGetTime();
-    #pragma omp for 
+    #pragma omp for schedule(dynamic, 1)
     for (int i = 0; i < nparticles; ++i)
     {
         Particle& particle = particles[i];
@@ -126,12 +126,12 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
         glm::vec3 viscosity(0.0f); 
         glm::vec3 dp(0.0f);
 
-        // for (int j : particle_neighbors[i])
         for (auto& j_pair : particle_neighbors[i])
         {
             int j = j_pair.first;
+            float distsqr = j_pair.second;
             glm::vec3 diff = particle.p - particles[j].p;
-            glm::vec3 diffv = particle.v - particles[j].v;
+            glm::vec3 diffv = particles[j].v - particle.v;
 
             // s_corr
             float s_corr = 0.0f;
@@ -140,7 +140,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
             // SQUARE dq?
             //}
             dp += (lambdas[i]+lambdas[j]+s_corr)*spiky_grad_kernel(diff);
-            //viscosity += poly6_kernel(diff)*diffv;
+            viscosity += poly6_kernel(distsqr)*diffv;
         }
         dp /= m_rest_density;
         
@@ -158,8 +158,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
 
         // Update velocity 
         particle.v = (particle.p - particle.p_old) / m_timestep;
-
-        //particle.v += c*viscosity;
+        particle.v += c*viscosity;
     }
     t_update = glfwGetTime()-t0;
     }

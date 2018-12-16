@@ -29,7 +29,8 @@ GUI::~GUI()
 
 void GUI::setup()
 {
-    ImGui::SetNextWindowSize(ImVec2(480,350), ImGuiSetCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400,460), ImGuiSetCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(20,20), ImGuiSetCond_FirstUseEver);
     ImGui::Begin("Simulation Parameters");
     ImGui::SliderInt("Solver Iterations", &config->solver_iters, 1, 100);
     ImGui::SliderFloat("Particle Radius", &config->particle_radius, 0.1f, 10.0f);

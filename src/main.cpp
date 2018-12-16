@@ -121,9 +121,9 @@ void create_fluid_cube(std::vector<Particle>& particles,
 
                 particles[n].p = start;
                 particles[n].v = glm::vec3(0.0f);
-                particles[n].r = rand() % 256;
-                particles[n].g = rand() % 256;
-                particles[n].b = rand() % 256;
+                particles[n].r = 64;// rand() % 256;
+                particles[n].g = 124;// rand() % 256;
+                particles[n].b = 253;// rand() % 256;
                 particles[n].a = (rand() % 256)/3;
 
                 color_data[4*n+0] = particles[n].r;
@@ -148,7 +148,7 @@ int main(int, char**)
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, false);
 
-    glm::vec4 light_position = glm::vec4(3.0f, 20.0f, 0.0f, 1.0f);
+    glm::vec4 light_position = glm::vec4(0.0f, 100.0f, 0.0f, 1.0f);
     MatrixPointers mats;
 
     std::vector<glm::vec4> floor_vertices;
@@ -230,6 +230,7 @@ int main(int, char**)
         if (!gui.isPaused()) 
             solver->step(particles, grid);
        
+        #pragma omp parallel for
         for (int i = 0; i < nparticles; ++i)
         {
             const Particle& p = particles[i];
