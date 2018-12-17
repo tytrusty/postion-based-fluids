@@ -11,7 +11,7 @@ struct Config
         grid_cell_width  = 1.0f;
         smoothing_radius = 1.0f; 
         kernel_radius    = 0.7f; 
-        rest_density     = 90.0f; // 63780.0f;
+        rest_density     = 80.0f; // 63780.0f;
         particle_mass    = 1.0f;
         cfm_epsilon      = 100.0f; // 6000.0f;
         timestep         = 0.016f;
@@ -44,7 +44,7 @@ struct Config
  * Global variables go here.
  */
 const float kNear = 0.1f;
-const float kFar = 1000.0f;
+const float kFar = 200.0f;
 const float kFov = 70.0f;
 
 // Floor info.

@@ -26,8 +26,6 @@ void bindUniform(unsigned, const std::vector<glm::vec4>&);
 void bindUniform(unsigned, const std::vector<glm::fquat>&);
 void bindUniform(unsigned, const std::vector<glm::mat4>&);
 
-// FIXME: overload bindUniform function to handle new data types.
-
 struct ShaderUniformBase {
 	std::string name;
 

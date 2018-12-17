@@ -64,7 +64,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
         // 1. Apply external forces and predict position 
         {
             particle.p_old = particle.p;
-            particle.v += m_timestep*glm::vec3(0.0f,-9.8f, 0.0f); // "gravity"
+            particle.v += m_timestep*m_particle_mass*glm::vec3(0.0f,-9.8f, 0.0f); // "gravity"
             particle.p += m_timestep*particle.v;
             // cout << "p.v." << glm::to_string(particle.v) << endl;
         }
@@ -99,12 +99,9 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
             grad_Ci_i += tmp_grad;
         }
         float C_i = density_i/m_rest_density - 1.0f;
-        //particle.r = 0.0f;
-        //particle.g = 0.0f;
-        //particle.b = glm::clamp<int>((C_i+0.7)*256, 0, 256);
+        //particle.b = glm::clamp<int>(density_i*256/120.0f, 0, 255);
         grad_Ci_norm2 += glm::length2(grad_Ci_i);
         lambdas[i] = -C_i/((grad_Ci_norm2/m_rest_density2) + m_cfm_epsilon);
-
         t_lambda += glfwGetTime()-t0;
         t0 = glfwGetTime();
     }
@@ -134,11 +131,9 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
             glm::vec3 diff = particle.p - particles[j].p;
             glm::vec3 diffv = particles[j].v - particle.v;
 
-            // s_corr
-            float s_corr = 0.0f;
-            {
-                s_corr = -k*glm::pow(poly6_kernel(distsqr)/dq_poly6, n);
-            }
+            // tensile instability artificial pressure
+            float s_corr = -k*glm::pow(poly6_kernel(distsqr)/dq_poly6, n);
+
             dp += (lambdas[i]+lambdas[j]+s_corr)*spiky_grad_kernel(diff);
             viscosity += poly6_kernel(distsqr)*diffv;
         }
@@ -149,7 +144,7 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
 
         // boundary conditions
         float bound = m_config->particle_radius*20.0f;
-        if (particle.p.y > bound*3) particle.p.y = bound*3;
+        //if (particle.p.y > bound*3) particle.p.y = bound*3;
         if (particle.p.y < 0.0f) particle.p.y = 0.0f;
         if (particle.p.x > bound*2) particle.p.x = bound*2;
         if (particle.p.x < 0.0f) particle.p.x = 0.0f;

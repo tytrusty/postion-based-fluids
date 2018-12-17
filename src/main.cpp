@@ -16,6 +16,7 @@
 #include "debuggl.h"
 #include "config.h"
 #include "solver.h"
+#include "texture_to_render.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -47,6 +48,12 @@ const char* particle_vertex_shader =
 ;
 const char* particle_fragment_shader =
 #include "shaders/particle.frag"
+;
+const char* depth_vertex_shader =
+#include "shaders/depth.vert"
+;
+const char* depth_fragment_shader =
+#include "shaders/depth.frag"
 ;
 
 GLFWwindow* init_glefw()
@@ -90,6 +97,16 @@ static const GLfloat g_vertex_buffer_data[] = {
     -0.5f, 0.5f, 0.0f,
     0.5f, 0.5f, 0.0f,
 };
+
+static const GLfloat g_quad_vertex_buffer_data[] = {
+    -1.0f, -1.0f, 0.0f,
+    1.0f, -1.0f, 0.0f,
+    -1.0f,  1.0f, 0.0f,
+    -1.0f,  1.0f, 0.0f,
+    1.0f, -1.0f, 0.0f,
+    1.0f,  1.0f, 0.0f,
+};
+
 
 void create_fluid_cube(std::vector<Particle>& particles,
         GLfloat*& position_data, GLubyte*& color_data, std::shared_ptr<Config> c)
@@ -147,18 +164,22 @@ int main(int, char**)
 
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, false);
-
-    glm::vec4 light_position = glm::vec4(0.0f, 100.0f, 0.0f, 1.0f);
+    glm::vec4 light_position = glm::vec4(0.0f, 15.0f, 0.0f, 1.0f);
     MatrixPointers mats;
+    TextureToRender rtt_depth;
+    rtt_depth.create(window_width, window_height);
 
+    //--------------------------------Geometry--------------------------------//
     std::vector<glm::vec4> floor_vertices;
     std::vector<glm::uvec3> floor_faces;
     create_floor(floor_vertices, floor_faces);
 
     int nparticles = config->fluid_dim[0]*config->fluid_dim[1]*config->fluid_dim[2];
     std::vector<Particle> particles;
+    create_fluid_cube(particles, particle_position_data, particle_color_data, config);
+    //------------------------------------------------------------------------//
 
-    // Setup uniforms
+    //--------------------------------Uniforms--------------------------------//
     std::function<const glm::mat4*()> model_data = [&mats]() { return mats.model; };
     std::function<glm::mat4()> view_data = [&mats]() { return *mats.view; };
     std::function<glm::mat4()> proj_data = [&mats]() { return *mats.projection; };
@@ -167,6 +188,8 @@ int main(int, char**)
     std::function<glm::vec4()> lp_data = [&light_position]() { return light_position; };
     std::function<float()> alpha_data = [&gui]() { return gui.isTransparent() ? 0.5 : 1.0; };
     std::function<float()> radius_data = [&config]() { return config->particle_radius; };
+    std::function<unsigned()> sampler_data = []() { return 0;  };
+    std::function<unsigned()> tex_data = [&rtt_depth]() { return rtt_depth.getTexture(); };
 
     auto std_model = std::make_shared<ShaderUniform<const glm::mat4*>>("model", model_data);
     auto floor_model = make_uniform("model", identity_mat);
@@ -176,8 +199,10 @@ int main(int, char**)
     auto std_light = make_uniform("light_position", lp_data);
     auto object_alpha = make_uniform("alpha", alpha_data);
     auto object_radius = make_uniform("radius", radius_data);
+    auto depth_tex = make_texture("tex_depth", sampler_data, 0, tex_data);
+    //------------------------------------------------------------------------//
 
-    // Floor render pass
+    //-----------------------------Render Passes------------------------------//
     RenderDataInput floor_pass_input;
     floor_pass_input.assign(0, "vertex_position", floor_vertices.data(), floor_vertices.size(), 4, GL_FLOAT, GL_FALSE);
     floor_pass_input.assignIndex(floor_faces.data(), floor_faces.size(), 3);
@@ -200,7 +225,16 @@ int main(int, char**)
             { "fragment_color" }
             );
 
-    create_fluid_cube(particles, particle_position_data, particle_color_data, config);
+    RenderDataInput fluid_pass_input;
+    fluid_pass_input.assign(0, "vertex_position", g_quad_vertex_buffer_data, sizeof(g_quad_vertex_buffer_data), 3, GL_FLOAT, GL_FALSE);
+    RenderPass fluid_pass(-1,
+            fluid_pass_input,
+            { depth_vertex_shader, nullptr, depth_fragment_shader},
+            { std_view, std_proj, std_light, depth_tex },
+            { "fragment_color" }
+            );
+    //------------------------------------------------------------------------//
+
     std::shared_ptr<Solver> solver = std::make_shared<Solver>(config);
     std::shared_ptr<HashGrid> grid = std::make_shared<HashGrid>(config->grid_cell_width);
     grid->init(particles);
@@ -245,7 +279,9 @@ int main(int, char**)
         gui.setup();
         ImVec4 clear_color = gui.getClearColor();
 
-        // Render Setup
+        //---------------------------Render-----------------------------------//
+        RenderMode mode = gui.getRenderMode();
+
         glfwGetFramebufferSize(window, &window_width, &window_height);
         glViewport(0, 0, window_width, window_height);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
@@ -265,6 +301,13 @@ int main(int, char**)
         floor_pass.setup();
         CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
+        // FBO bind
+        if (mode == RenderMode::Depth)
+        {
+            rtt_depth.bind();
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
+
         // Render particles
         particle_pass.updateVBO(1, particle_position_data, nparticles);
         particle_pass.updateVBO(2, particle_color_data, nparticles);
@@ -273,6 +316,15 @@ int main(int, char**)
         glVertexAttribDivisor(1,1);
         glVertexAttribDivisor(2,1);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, nparticles);
+
+        // Render depth buffer
+        if (mode == RenderMode::Depth)
+        {
+            rtt_depth.unbind();
+            glClear(GL_DEPTH_BUFFER_BIT);
+            fluid_pass.setup();
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
 
         // Render UI 
         ImGui::Render();

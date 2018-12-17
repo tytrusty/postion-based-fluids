@@ -16,6 +16,12 @@ struct MatrixPointers {
     const glm::mat4 *projection, *model, *view;
 };
 
+enum class RenderMode
+{
+    Particle,
+    Depth
+};
+
 class GUI {
 public:
     GUI(GLFWwindow*, std::shared_ptr<Config>);
@@ -42,6 +48,17 @@ public:
     void setReset(bool reset) { reset_simulation_ = reset; }
     ImVec4 getClearColor() const { return clear_color_; }
 
+    RenderMode getRenderMode()
+    {
+        switch(current_mode_)
+        {
+            case 0:
+                return RenderMode::Particle;
+            case 1: 
+                return RenderMode::Depth;
+        }
+    }
+
 private:
     GLFWwindow* window_;
     std::shared_ptr<Config> config;
@@ -64,7 +81,9 @@ private:
     bool pause_simulation_ = true;
     bool reset_simulation_ = false;
     bool show_test_window_ = false;
-    ImVec4 clear_color_ = ImColor(114, 144, 154);
+    ImVec4 clear_color_; // ImColor(114, 144, 154);
+
+    int current_mode_ = 0;
 
     glm::vec3 eye_ = glm::vec3(3.0f, 5.0f, camera_distance_);
     glm::vec3 up_ = glm::vec3(0.0f, 1.0f, 0.0f);

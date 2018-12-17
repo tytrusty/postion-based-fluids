@@ -72,8 +72,9 @@ void TextureCombo::bind(unsigned loc)
 	CHECK_GL_ERROR(glBindTexture(GL_TEXTURE_2D, tex));
 
 	// Set the OpenGL sampler used by the texture unit
-	unsigned sam = sampler_source();
-	CHECK_GL_ERROR(glBindSampler(texture_unit, sam));
+    // NOTE: lol
+	//unsigned sam = sampler_source();
+	//CHECK_GL_ERROR(glBindSampler(texture_unit, sam));
 
 	// Attach the GLSL sampler to a texture unit
 	CHECK_GL_ERROR(glUniform1i(loc, texture_unit));

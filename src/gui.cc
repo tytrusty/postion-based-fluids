@@ -9,6 +9,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 
+static const char* render_modes_[] = { "Particle", "Depth" };
+
 GUI::GUI(GLFWwindow* window, std::shared_ptr<Config> config)
     :window_(window), config(config)
 {
@@ -32,6 +34,7 @@ void GUI::setup()
     ImGui::SetNextWindowSize(ImVec2(400,460), ImGuiSetCond_FirstUseEver);
     ImGui::SetNextWindowPos(ImVec2(20,20), ImGuiSetCond_FirstUseEver);
     ImGui::Begin("Simulation Parameters");
+    ImGui::Combo("Render Mode", &current_mode_, render_modes_, 2);
     ImGui::SliderInt("Solver Iterations", &config->solver_iters, 1, 100);
     ImGui::SliderFloat("Particle Radius", &config->particle_radius, 0.1f, 10.0f);
     ImGui::InputFloat("Timestep", &config->timestep, 0.0001f, 1.0f);
@@ -46,7 +49,7 @@ void GUI::setup()
     ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
     ImGui::InputFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
     ImGui::InputInt3("Fluid Cube Dim", glm::value_ptr(config->fluid_dim));
-    
+
     ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
     if (ImGui::Button("Start/Stop")) pause_simulation_ ^= 1;
     if (ImGui::Button("Reset")) reset_simulation_ ^= 1;
