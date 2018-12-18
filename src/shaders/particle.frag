@@ -31,7 +31,7 @@ void main(){
 
     //Set the depth based on the new cameraPos.
     vec4 clipPos = projection * vec4(pos, 1.0);
-    gl_FragDepth = pow(clipPos.z / (clipPos.w), 20);
+    gl_FragDepth = pow(clipPos.z / (clipPos.w), 25);
 
 	vec3 final_color = color;
 

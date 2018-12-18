@@ -21,6 +21,8 @@ struct Config
         artificial_pressure_n  = 4;
         solver_iters = 4;
         fluid_dim = glm::ivec3(6,60,20);
+        filter_radius = 2;
+        filter_sigma = 1.0f;
     }
 
     // Simulation Parameters
@@ -38,6 +40,8 @@ struct Config
     float viscosity_c;
     int solver_iters;       // simulation step solver iterations
     glm::ivec3 fluid_dim;
+    int filter_radius;
+    float filter_sigma;
 };
 
 /*

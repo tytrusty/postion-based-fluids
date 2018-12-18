@@ -5,7 +5,7 @@ class TextureToRender {
 public:
 	TextureToRender();
 	~TextureToRender();
-	void create(int width, int height);
+	void create(int width, int height, bool render_depth=false);
 	void bind();
 	void unbind();
 	int getTexture() const { return tex_; }

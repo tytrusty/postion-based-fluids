@@ -49,11 +49,17 @@ const char* particle_vertex_shader =
 const char* particle_fragment_shader =
 #include "shaders/particle.frag"
 ;
-const char* depth_vertex_shader =
+const char* quad_vertex_shader =
 #include "shaders/depth.vert"
 ;
 const char* depth_fragment_shader =
 #include "shaders/depth.frag"
+;
+const char* filter_fragment_shader =
+#include "shaders/filter.frag"
+;
+const char* normal_fragment_shader =
+#include "shaders/normal.frag"
 ;
 
 GLFWwindow* init_glefw()
@@ -98,7 +104,7 @@ static const GLfloat g_vertex_buffer_data[] = {
     0.5f, 0.5f, 0.0f,
 };
 
-static const GLfloat g_quad_vertex_buffer_data[] = {
+static const GLfloat s_quad_vertices[] = {
     -1.0f, -1.0f, 0.0f,
     1.0f, -1.0f, 0.0f,
     -1.0f,  1.0f, 0.0f,
@@ -166,8 +172,16 @@ int main(int, char**)
     ImGui_ImplGlfwGL3_Init(window, false);
     glm::vec4 light_position = glm::vec4(0.0f, 15.0f, 0.0f, 1.0f);
     MatrixPointers mats;
+
+    // FBOs
     TextureToRender rtt_depth;
-    rtt_depth.create(window_width, window_height);
+    rtt_depth.create(window_width, window_height, true);
+    TextureToRender rtt_filter;
+    rtt_filter.create(window_width, window_height);
+    TextureToRender rtt_normal;
+    rtt_normal.create(window_width, window_height);
+
+    int active_texture = -1;
 
     //--------------------------------Geometry--------------------------------//
     std::vector<glm::vec4> floor_vertices;
@@ -189,7 +203,11 @@ int main(int, char**)
     std::function<float()> alpha_data = [&gui]() { return gui.isTransparent() ? 0.5 : 1.0; };
     std::function<float()> radius_data = [&config]() { return config->particle_radius; };
     std::function<unsigned()> sampler_data = []() { return 0;  };
-    std::function<unsigned()> tex_data = [&rtt_depth]() { return rtt_depth.getTexture(); };
+    std::function<unsigned()> tex_data = [&active_texture]() { return active_texture; };
+    std::function<glm::vec2()> pixel_size_data = [=]() { return glm::vec2(1./window_width, 1./window_height);};
+    std::function<int()> filter_radius_data = [&config]() { return config->filter_radius; };
+    std::function<float()> filter_sigma_data = [&config]() { return config->filter_sigma; };
+
 
     auto std_model = std::make_shared<ShaderUniform<const glm::mat4*>>("model", model_data);
     auto floor_model = make_uniform("model", identity_mat);
@@ -200,6 +218,9 @@ int main(int, char**)
     auto object_alpha = make_uniform("alpha", alpha_data);
     auto object_radius = make_uniform("radius", radius_data);
     auto depth_tex = make_texture("tex_depth", sampler_data, 0, tex_data);
+    auto pixel_size = make_uniform("pixel_size", pixel_size_data);
+    auto filter_radius = make_uniform("filter_radius", filter_radius_data);
+    auto filter_sigma = make_uniform("filter_sigma", filter_sigma_data);
     //------------------------------------------------------------------------//
 
     //-----------------------------Render Passes------------------------------//
@@ -226,12 +247,30 @@ int main(int, char**)
             );
 
     RenderDataInput fluid_pass_input;
-    fluid_pass_input.assign(0, "vertex_position", g_quad_vertex_buffer_data, sizeof(g_quad_vertex_buffer_data), 3, GL_FLOAT, GL_FALSE);
+    fluid_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
     RenderPass fluid_pass(-1,
             fluid_pass_input,
-            { depth_vertex_shader, nullptr, depth_fragment_shader},
+            { quad_vertex_shader, nullptr, depth_fragment_shader},
             { std_view, std_proj, std_light, depth_tex },
             { "fragment_color" }
+            );
+
+    RenderDataInput filter_pass_input;
+    filter_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
+    RenderPass filter_pass(-1,
+            filter_pass_input,
+            { quad_vertex_shader, nullptr, filter_fragment_shader},
+            { std_view, std_proj, depth_tex, object_radius, pixel_size, filter_radius, filter_sigma },
+            { "out_depth" }
+            );
+
+    RenderDataInput normal_pass_input;
+    normal_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
+    RenderPass normal_pass(-1,
+            normal_pass_input,
+            { quad_vertex_shader, nullptr, normal_fragment_shader},
+            { std_view, std_proj, depth_tex, pixel_size },
+            { "out_normal" }
             );
     //------------------------------------------------------------------------//
 
@@ -321,7 +360,26 @@ int main(int, char**)
         if (mode == RenderMode::Depth)
         {
             rtt_depth.unbind();
+
+            // FILTER DEPTH
+            rtt_filter.bind();
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            active_texture = rtt_depth.getTexture(); 
+            filter_pass.setup();
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+            rtt_filter.unbind();
+
+            // NORMAL COMPUTE
+            rtt_normal.bind();
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            active_texture = rtt_filter.getTexture(); 
+            normal_pass.setup(); 
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+            rtt_normal.unbind();
+
+            // RENDER DEPTH
             glClear(GL_DEPTH_BUFFER_BIT);
+            active_texture = rtt_normal.getTexture(); 
             fluid_pass.setup();
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
