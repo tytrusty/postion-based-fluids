@@ -168,7 +168,9 @@ int main(int, char**)
     GLFWwindow* window = init_glefw();  
     std::shared_ptr<Config> config = std::make_shared<Config>();
     GUI gui(window, config);
-
+    int texture_units = 0;
+    glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &texture_units);
+    std::cout << "max tex units: " << texture_units << std::endl;
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, false);
     glm::vec4 light_position = glm::vec4(
@@ -189,6 +191,7 @@ int main(int, char**)
     rtt_normal.create(window_width, window_height);
 
     int active_texture = -1;
+    int active_texture1 = -1;
 
     //--------------------------------Geometry--------------------------------//
     std::vector<glm::vec4> floor_vertices;
@@ -214,7 +217,8 @@ int main(int, char**)
     std::function<float()> alpha_data = [&gui]() { return gui.isTransparent() ? 0.5 : 1.0; };
     std::function<float()> radius_data = [&config]() { return config->particle_radius; };
     std::function<unsigned()> sampler_data = []() { return 0;  };
-    std::function<unsigned()> tex_data = [&active_texture]() { return active_texture; };
+    std::function<unsigned()> tex_data0 = [&active_texture]() { return active_texture; };
+    std::function<unsigned()> tex_data1 = [&active_texture1]() { return active_texture1; };
     std::function<glm::vec2()> pixel_size_data = [=]() { return glm::vec2(1./window_width, 1./window_height);};
     std::function<int()> filter_radius_data = [&config]() { return config->filter_radius; };
     std::function<float()> filter_sigma_data = [&config]() { return config->filter_sigma; };
@@ -228,7 +232,8 @@ int main(int, char**)
     auto std_light = make_uniform("light_position", lp_data);
     auto object_alpha = make_uniform("alpha", alpha_data);
     auto object_radius = make_uniform("radius", radius_data);
-    auto depth_tex = make_texture("tex_depth", sampler_data, 0, tex_data);
+    auto depth_tex = make_texture("tex_depth", sampler_data, 0, tex_data0);
+    auto normal_tex = make_texture("tex_normal", sampler_data, 1, tex_data1);
     auto pixel_size = make_uniform("pixel_size", pixel_size_data);
     auto filter_radius = make_uniform("filter_radius", filter_radius_data);
     auto filter_sigma = make_uniform("filter_sigma", filter_sigma_data);
@@ -292,7 +297,7 @@ int main(int, char**)
     RenderPass fluid_pass(-1,
             fluid_pass_input,
             { quad_vertex_shader, nullptr, fluid_fragment_shader},
-            { std_view, std_proj, std_light, depth_tex, std_light },
+            { std_view, std_proj, std_light, normal_tex, depth_tex },
             { "fragment_color" }
             );
     //------------------------------------------------------------------------//
@@ -367,9 +372,10 @@ int main(int, char**)
         mats = gui.getMatrixPointers();
 
         // Render floor 
-        floor_pass.setup();
-        CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
+        //floor_pass.setup();
+        //CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
+        // Render bounds
         bounds_pass.setup();
         CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, bounds_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
@@ -437,7 +443,8 @@ int main(int, char**)
                 {
                     rtt_normal.unbind();
                     glClear(GL_DEPTH_BUFFER_BIT);
-                    active_texture = rtt_normal.getTexture(); 
+                    active_texture = prev->getTexture(); 
+                    active_texture1 = rtt_normal.getTexture(); 
                     fluid_pass.setup();
                     glDrawArrays(GL_TRIANGLES, 0, 6);
                 }

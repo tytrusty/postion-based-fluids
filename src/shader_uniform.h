@@ -28,9 +28,9 @@ void bindUniform(unsigned, const std::vector<glm::fquat>&);
 void bindUniform(unsigned, const std::vector<glm::mat4>&);
 
 struct ShaderUniformBase {
-	std::string name;
+    std::string name;
 
-	virtual void bind(unsigned loc) = 0;
+    virtual void bind(unsigned loc) = 0;
 };
 
 typedef std::shared_ptr<ShaderUniformBase> ShaderUniformPtr;
@@ -50,21 +50,20 @@ std::ostream& operator<<(std::ostream& stm, const std::vector<T>& obj) {
 
 template<typename T>
 struct ShaderUniform : public ShaderUniformBase {
-	std::function<T()> data_source;
+    std::function<T()> data_source;
 
-	ShaderUniform(const std::string& name,
-	              std::function<T()> func)
-	{
-		this->name = name;
-		this->data_source = func;
-	}
+    ShaderUniform(const std::string& name,
+                  std::function<T()> func)
+    {
+        this->name = name;
+        this->data_source = func;
+    }
 
-	virtual void bind(unsigned loc) override
-	{
-		auto data = this->data_source();
-		// std::cerr << "binding " << name << " to " << data << std::endl;
-		CHECK_GL_ERROR(bindUniform(loc, data));
-	};
+    virtual void bind(unsigned loc) override
+    {
+        auto data = this->data_source();
+        CHECK_GL_ERROR(bindUniform(loc, data));
+    };
 };
 
 template<typename T>
@@ -72,16 +71,16 @@ std::shared_ptr<ShaderUniformBase>
 make_uniform(const std::string& name,
              std::function<T()> func)
 {
-	// using RC = typename std::remove_const<T>::type;
-	// using Bare = typename std::remove_reference<RC>::type;
-	return std::make_shared<ShaderUniform<T>>(name, func);
+    // using RC = typename std::remove_const<T>::type;
+    // using Bare = typename std::remove_reference<RC>::type;
+    return std::make_shared<ShaderUniform<T>>(name, func);
 }
 
 struct TextureCombo : public ShaderUniformBase {
-	std::function<unsigned()> sampler_source;
-	unsigned texture_unit;
-	std::function<unsigned()> texture_source;
-	virtual void bind(unsigned loc) override;
+    std::function<unsigned()> sampler_source;
+    unsigned texture_unit;
+    std::function<unsigned()> texture_source;
+    virtual void bind(unsigned loc) override;
 };
 
 std::shared_ptr<TextureCombo>

@@ -10,7 +10,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 
 # eigen
 # set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+# find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 # glfw
 find_package(glfw3 REQUIRED)
@@ -35,5 +35,5 @@ target_link_libraries(
         ${OPENGL_LIBRARIES}
         ${GLEW_LIBRARIES}
         ${EXTRA_LIBS}
-        Eigen3::Eigen
+        # Eigen3::Eigen
 )

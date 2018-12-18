@@ -24,9 +24,11 @@ float gaussian1D(float r, float sigma2)
 void main() {
     float depth_center = texture(tex_depth, UV).r;
     out_depth.a = 1.0;
-    if (depth_center > 0.9 || depth_center < 0.001)
+    if (depth_center > 0.99 || depth_center < 0.001)
     {
         out_depth.r = depth_center;
+        return;
+        // discard;
     }
 
     float sigma = filter_sigma*radius;

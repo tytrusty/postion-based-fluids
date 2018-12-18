@@ -10,8 +10,8 @@ uniform vec2 pixel_size;
 uniform mat4 projection;
 
 
-float far = 1.0f;
-float near = 0.01f;
+float far = 10.0f;
+float near = 0.1f;
 vec3 uv_to_view(vec2 UV, float depth)
 {
     float x = 2.0 * UV.x - 1.0;
@@ -30,7 +30,10 @@ float linearize(float depth)
 void main(){
     float depth = texture(tex_depth, UV).r;
     if (depth > 0.999 || depth < 1e-4)
-        discard;
+    {
+        out_normal = vec4(1,1,1,1);
+        return;
+    }
 
     // UV coords
     vec2 left  = vec2(UV.x-pixel_size.x, UV.y);
@@ -61,6 +64,6 @@ void main(){
     vec3 dy = (abs(dy_up.z) < abs(dy_down.z)) ? dy_up : dy_down;
 
     // cross gradients to get normal direction
-    out_normal = vec4(normalize(cross(dx,dy)),1.0);
+    out_normal = vec4(-normalize(cross(dx,dy)),1.0);
 }
 )zzz"
