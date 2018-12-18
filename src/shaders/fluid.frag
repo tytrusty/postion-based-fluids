@@ -41,8 +41,8 @@ void main(){
     vec3 light = vec3(view*light_position);
     vec3 pos = uv_to_view(UV, texture(tex_depth,UV).r);
     vec3 world_pos = vec3(inv_view*vec4(pos,1.0f));
-    vec3 light_dir = vec3(normalize(vec3(light_position)-world_pos));
-    vec3 world_normal = vec3(inv_view*vec4(normal,0.0f));
+    vec3 light_dir = vec3(normalize(vec3(view*light_position)));//-world_pos));
+    vec3 world_normal = vec3(vec4(normal,0.0f));
 
     float dot_nl = clamp(dot(light_dir, world_normal), 0.0, 1.0);
     vec3 color = clamp(dot_nl*diffuse + ambient, 0.0, 1.0);
