@@ -23,16 +23,19 @@ float gaussian1D(float r, float sigma2)
 
 void main() {
     float depth_center = texture(tex_depth, UV).r;
-    if (depth_center > 0.99f)
-        discard;
+    out_depth.a = 1.0;
+    if (depth_center > 0.9 || depth_center < 0.001)
+    {
+        out_depth.r = depth_center;
+    }
 
     float sigma = filter_sigma*radius;
-    float sigma2 = sigma*sigma;
+    float sigma2 = sigma*sigma*2.0;
 
     float x1 = UV.x, x2 = UV.x, y1 = UV.y, y2 = UV.y;
 
-    float filtered_depth = 0.0;
-    float weight_sum = 0.0;
+    float filtered_depth = depth_center;
+    float weight_sum = 1.0;
 
     for (int i = 1; i <= filter_radius; ++i)
     {
@@ -55,19 +58,21 @@ void main() {
             float d2 = texture(tex_depth, right_down).r;
             float d3 = texture(tex_depth, left_up).r;
             float d4 = texture(tex_depth, left_down).r;
+
             // weights
             float w1 = gaussian1D(d1, sigma2);
             float w2 = gaussian1D(d2, sigma2);
             float w3 = gaussian1D(d3, sigma2);
             float w4 = gaussian1D(d4, sigma2);
 
-            filtered_depth += (w1*d1 + w2*d2 + w3*d3 + w4*d4);
-            weight_sum += (w1 + w2 + w3 + w4);
+            // radial weight (decreasing weight with distance from center)
+            float w_r = gaussian2D(vec2(i*pixel_size.x, j*pixel_size.y), sigma2);
+
+            filtered_depth += w_r * (w1*d1 + w2*d2 + w3*d3 + w4*d4);
+            weight_sum += w_r * (w1 + w2 + w3 + w4);
         }
     }
     filtered_depth /= weight_sum;
-
     out_depth.r = filtered_depth;
-    out_depth.a = 1.0;
 }
 )zzz"

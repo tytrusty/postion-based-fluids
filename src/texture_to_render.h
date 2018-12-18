@@ -3,9 +3,9 @@
 
 class TextureToRender {
 public:
-	TextureToRender();
+	TextureToRender(bool render_depth=false);
 	~TextureToRender();
-	void create(int width, int height, bool render_depth=false);
+	void create(int width, int height);
 	void bind();
 	void unbind();
 	int getTexture() const { return tex_; }
@@ -14,6 +14,7 @@ private:
 	unsigned int fb_ = -1;
 	unsigned int tex_ = -1;
 	unsigned int dep_ = -1;
+    bool render_depth_;
 };
 
 #endif

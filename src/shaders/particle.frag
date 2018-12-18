@@ -31,7 +31,8 @@ void main(){
 
     //Set the depth based on the new cameraPos.
     vec4 clipPos = projection * vec4(pos, 1.0);
-    gl_FragDepth = pow(clipPos.z / (clipPos.w), 25);
+    gl_FragDepth = pow(clipPos.z / clipPos.w, 60);
+    // gl_FragDepth = clipPos.z / clipPos.w;
 
 	vec3 final_color = color;
 
@@ -49,8 +50,6 @@ void main(){
     lightingIntensity = clamp(dot(reflect(-light_dir, normal), view_dir), 0.0, 1.0);
 	lightingIntensity = pow(lightingIntensity, 60.0);
 	final_color += vec3(0.4, 0.4, 0.4) * lightingIntensity;
-
 	fragment_color = vec4(final_color, 1.0);
-
 }
 )zzz"

@@ -3,7 +3,8 @@
 #include "texture_to_render.h"
 #include "debuggl.h"
 
-TextureToRender::TextureToRender()
+TextureToRender::TextureToRender(bool render_depth)
+    : render_depth_(render_depth)
 {
 }
 
@@ -17,7 +18,7 @@ TextureToRender::~TextureToRender()
     glDeleteRenderbuffers(1, &dep_);
 }
 
-void TextureToRender::create(int width, int height, bool render_depth)
+void TextureToRender::create(int width, int height)
 {
     w_ = width;
     h_ = height;
@@ -35,16 +36,16 @@ void TextureToRender::create(int width, int height, bool render_depth)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 
-    if (render_depth)
+    if (render_depth_)
     {
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, w_, h_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, w_, h_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
         glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, tex_, 0);
         glDrawBuffer(GL_NONE);
         glReadBuffer(GL_NONE);
     }
     else 
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w_, h_, 0,GL_RGB, GL_FLOAT, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w_, h_, 0, GL_RGBA, GL_FLOAT, 0);
 
         // Create depth buffer
         glGenRenderbuffers(1, &dep_);

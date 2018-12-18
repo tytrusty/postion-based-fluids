@@ -19,7 +19,9 @@ struct MatrixPointers {
 enum class RenderMode
 {
     Particle,
-    Depth
+    Depth,
+    Normal,
+    Fluid
 };
 
 class GUI {
@@ -56,6 +58,10 @@ public:
                 return RenderMode::Particle;
             case 1: 
                 return RenderMode::Depth;
+            case 2:
+                return RenderMode::Normal;
+            case 3:
+                return RenderMode::Fluid;
         }
     }
 

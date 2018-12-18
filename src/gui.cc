@@ -9,7 +9,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 
-static const char* render_modes_[] = { "Particle", "Depth" };
+static const char* render_modes_[] = { "Particle", "Depth", "Normal", "Fluid" };
 
 GUI::GUI(GLFWwindow* window, std::shared_ptr<Config> config)
     :window_(window), config(config)
@@ -34,7 +34,7 @@ void GUI::setup()
     ImGui::SetNextWindowSize(ImVec2(400,460), ImGuiSetCond_FirstUseEver);
     ImGui::SetNextWindowPos(ImVec2(20,20), ImGuiSetCond_FirstUseEver);
     ImGui::Begin("Simulation Parameters");
-    ImGui::Combo("Render Mode", &current_mode_, render_modes_, 2);
+    ImGui::Combo("Render Mode", &current_mode_, render_modes_, 4);
     ImGui::SliderInt("Solver Iterations", &config->solver_iters, 1, 100);
     ImGui::SliderFloat("Particle Radius", &config->particle_radius, 0.1f, 10.0f);
     ImGui::InputFloat("Timestep", &config->timestep, 0.0001f, 1.0f);
@@ -49,8 +49,9 @@ void GUI::setup()
     ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
     ImGui::InputFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
     ImGui::InputInt3("Fluid Cube Dim", glm::value_ptr(config->fluid_dim));
-    ImGui::SliderInt("Filter Radius", &config->filter_radius, 1, 20);
-    ImGui::SliderFloat("Filter Sigma", &config->filter_sigma, 0.0001f, 5.0f);
+    ImGui::SliderInt("Filter Radius", &config->filter_radius, 0, 20);
+    ImGui::SliderInt("Filter Iters", &config->filter_iters, 1, 20);
+    ImGui::SliderFloat("Filter Sigma", &config->filter_sigma, 0.0001f, 30.0f);
 
     ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
     if (ImGui::Button("Start/Stop")) pause_simulation_ ^= 1;

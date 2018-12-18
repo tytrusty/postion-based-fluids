@@ -21,8 +21,9 @@ struct Config
         artificial_pressure_n  = 4;
         solver_iters = 4;
         fluid_dim = glm::ivec3(6,60,20);
-        filter_radius = 2;
-        filter_sigma = 1.0f;
+        filter_radius = 4;
+        filter_sigma = 1.85f;
+        filter_iters = 1;
     }
 
     // Simulation Parameters
@@ -42,13 +43,14 @@ struct Config
     glm::ivec3 fluid_dim;
     int filter_radius;
     float filter_sigma;
+    int filter_iters;
 };
 
 /*
  * Global variables go here.
  */
-const float kNear = 0.1f;
-const float kFar = 200.0f;
+const float kNear = 0.01f;
+const float kFar = 1000.0f;
 const float kFov = 70.0f;
 
 // Floor info.

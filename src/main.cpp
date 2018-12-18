@@ -9,7 +9,6 @@
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw_gl3.h>
-
 #include "hash_grid.h"
 #include "render_pass.h"
 #include "gui.h"
@@ -17,6 +16,7 @@
 #include "config.h"
 #include "solver.h"
 #include "texture_to_render.h"
+#include "shaders.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -30,37 +30,6 @@ static void error_callback(int error, const char* description)
 int window_width = 1280;
 int window_height = 720;
 std::string window_title = "PBF Demo";
-
-const char* vertex_shader =
-#include "shaders/default.vert"
-;
-const char* geometry_shader =
-#include "shaders/default.geom"
-;
-const char* fragment_shader =
-#include "shaders/default.frag"
-;
-const char* floor_fragment_shader =
-#include "shaders/floor.frag"
-;
-const char* particle_vertex_shader =
-#include "shaders/particle.vert"
-;
-const char* particle_fragment_shader =
-#include "shaders/particle.frag"
-;
-const char* quad_vertex_shader =
-#include "shaders/depth.vert"
-;
-const char* depth_fragment_shader =
-#include "shaders/depth.frag"
-;
-const char* filter_fragment_shader =
-#include "shaders/filter.frag"
-;
-const char* normal_fragment_shader =
-#include "shaders/normal.frag"
-;
 
 GLFWwindow* init_glefw()
 {
@@ -174,10 +143,13 @@ int main(int, char**)
     MatrixPointers mats;
 
     // FBOs
-    TextureToRender rtt_depth;
-    rtt_depth.create(window_width, window_height, true);
+    TextureToRender rtt_depth(true);
+    rtt_depth.create(window_width, window_height);
     TextureToRender rtt_filter;
     rtt_filter.create(window_width, window_height);
+    TextureToRender rtt_filter_2; // NOTE: this is a hack ... 
+    rtt_filter_2.create(window_width, window_height);
+
     TextureToRender rtt_normal;
     rtt_normal.create(window_width, window_height);
 
@@ -245,16 +217,6 @@ int main(int, char**)
             { std_view, std_proj, std_light, object_radius},
             { "fragment_color" }
             );
-
-    RenderDataInput fluid_pass_input;
-    fluid_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
-    RenderPass fluid_pass(-1,
-            fluid_pass_input,
-            { quad_vertex_shader, nullptr, depth_fragment_shader},
-            { std_view, std_proj, std_light, depth_tex },
-            { "fragment_color" }
-            );
-
     RenderDataInput filter_pass_input;
     filter_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
     RenderPass filter_pass(-1,
@@ -263,7 +225,6 @@ int main(int, char**)
             { std_view, std_proj, depth_tex, object_radius, pixel_size, filter_radius, filter_sigma },
             { "out_depth" }
             );
-
     RenderDataInput normal_pass_input;
     normal_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
     RenderPass normal_pass(-1,
@@ -271,6 +232,22 @@ int main(int, char**)
             { quad_vertex_shader, nullptr, normal_fragment_shader},
             { std_view, std_proj, depth_tex, pixel_size },
             { "out_normal" }
+            );
+    RenderDataInput depth_pass_input;
+    depth_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
+    RenderPass depth_pass(-1,
+            depth_pass_input,
+            { quad_vertex_shader, nullptr, depth_fragment_shader},
+            { std_view, std_proj, depth_tex },
+            { "fragment_color" }
+            );
+    RenderDataInput fluid_pass_input;
+    fluid_pass_input.assign(0, "vertex_position", s_quad_vertices, sizeof(s_quad_vertices), 3, GL_FLOAT, GL_FALSE);
+    RenderPass fluid_pass(-1,
+            fluid_pass_input,
+            { quad_vertex_shader, nullptr, fluid_fragment_shader},
+            { std_view, std_proj, std_light, depth_tex, std_light },
+            { "fragment_color" }
             );
     //------------------------------------------------------------------------//
 
@@ -341,7 +318,7 @@ int main(int, char**)
         CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
         // FBO bind
-        if (mode == RenderMode::Depth)
+        if (mode != RenderMode::Particle)
         {
             rtt_depth.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -356,12 +333,10 @@ int main(int, char**)
         glVertexAttribDivisor(2,1);
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, nparticles);
 
-        // Render depth buffer
-        if (mode == RenderMode::Depth)
+        if (mode != RenderMode::Particle)
         {
             rtt_depth.unbind();
 
-            // FILTER DEPTH
             rtt_filter.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             active_texture = rtt_depth.getTexture(); 
@@ -369,19 +344,48 @@ int main(int, char**)
             glDrawArrays(GL_TRIANGLES, 0, 6);
             rtt_filter.unbind();
 
-            // NORMAL COMPUTE
-            rtt_normal.bind();
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            active_texture = rtt_filter.getTexture(); 
-            normal_pass.setup(); 
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            rtt_normal.unbind();
+            
+            TextureToRender* curr = &rtt_filter_2;
+            TextureToRender* prev = &rtt_filter;
+            for (int i = 1; i < config->filter_iters; ++i)
+            {
+                curr->bind();
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                active_texture = prev->getTexture(); 
+                filter_pass.setup();
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                curr->unbind();
+                std::swap(curr,prev);
+            }
 
-            // RENDER DEPTH
-            glClear(GL_DEPTH_BUFFER_BIT);
-            active_texture = rtt_normal.getTexture(); 
-            fluid_pass.setup();
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            if (mode == RenderMode::Depth)
+            {
+                glClear(GL_DEPTH_BUFFER_BIT);
+                active_texture = prev->getTexture(); 
+                depth_pass.setup();
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            }
+            else 
+            {
+                if (mode == RenderMode::Fluid)
+                {
+                    rtt_normal.bind();
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                }
+                active_texture = prev->getTexture(); 
+                normal_pass.setup(); 
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+
+                if (mode == RenderMode::Fluid)
+                {
+                    rtt_normal.unbind();
+                    glClear(GL_DEPTH_BUFFER_BIT);
+                    active_texture = rtt_normal.getTexture(); 
+                    fluid_pass.setup();
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
+            }
         }
 
         // Render UI 
