@@ -48,10 +48,11 @@ void GUI::setup()
     ImGui::InputFloat("Artificial pressure (k)", &config->artificial_pressure_k, 0.00001f, 5.0f);
     ImGui::SliderInt("Artificial pressure (n)", &config->artificial_pressure_n, 1, 10);
     ImGui::InputFloat("Artificial pressure (dq)", &config->artificial_pressure_dq, 0.00001f, 5.0f);
-    ImGui::InputInt3("Fluid Cube Dim", glm::value_ptr(config->fluid_dim));
     ImGui::SliderInt("Filter Radius", &config->filter_radius, 0, 20);
     ImGui::SliderInt("Filter Iters", &config->filter_iters, 1, 20);
     ImGui::SliderFloat("Filter Sigma", &config->filter_sigma, 0.0001f, 30.0f);
+    ImGui::InputInt3("Fluid Cube Dim", glm::value_ptr(config->fluid_dim));
+    ImGui::InputInt3("Bounds Dim", glm::value_ptr(config->bounds_dim));
 
     ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
     if (ImGui::Button("Start/Stop")) pause_simulation_ ^= 1;

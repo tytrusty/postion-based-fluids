@@ -12,6 +12,9 @@ const char* fragment_shader =
 const char* floor_fragment_shader =
 #include "shaders/floor.frag"
 ;
+const char* bounds_fragment_shader =
+#include "shaders/bounds.frag"
+;
 const char* particle_vertex_shader =
 #include "shaders/particle.vert"
 ;

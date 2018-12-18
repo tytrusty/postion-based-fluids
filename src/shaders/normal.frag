@@ -32,17 +32,6 @@ void main(){
     if (depth > 0.999 || depth < 1e-4)
         discard;
 
-	float x = UV.x;
-	float y = UV.y;
-    float xp = UV.x + pixel_size.x;
-    float xn = UV.x - pixel_size.x;
-    float yp = UV.y + pixel_size.y;
-    float yn = UV.y - pixel_size.y;
-    float depthxn = linearize(texture(tex_depth, vec2(xn,y)).r);
-    float depthxp = linearize(texture(tex_depth, vec2(xp,y)).r);
-    float depthyn = linearize(texture(tex_depth, vec2(x,yn)).r);
-    float depthyp = linearize(texture(tex_depth, vec2(x,yp)).r);
-
     // UV coords
     vec2 left  = vec2(UV.x-pixel_size.x, UV.y);
     vec2 right = vec2(UV.x+pixel_size.x, UV.y);

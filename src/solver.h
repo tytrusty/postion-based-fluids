@@ -50,5 +50,6 @@ private:
     float m_spiky_factor;
     float m_timestep;
     size_t m_solver_iters;
+    glm::vec3 m_bounds;
 };
 #endif // SOLVER_H

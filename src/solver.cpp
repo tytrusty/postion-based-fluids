@@ -30,6 +30,7 @@ void Solver::update_params()
     m_rest_density2 = m_rest_density*m_rest_density; 
     m_particle_mass = m_config->particle_mass;
     m_kernel_radius = m_config->kernel_radius;
+    m_bounds        = m_config->particle_radius*glm::vec3(m_config->bounds_dim);
 }
 
 static int step_cnt = 0;
@@ -143,13 +144,11 @@ void Solver::step(vector<Particle>& particles, shared_ptr<HashGrid> hash_grid)
         particle.p += dp;
 
         // boundary conditions
-        float bound = m_config->particle_radius*20.0f;
-        //if (particle.p.y > bound*3) particle.p.y = bound*3;
         if (particle.p.y < 0.0f) particle.p.y = 0.0f;
-        if (particle.p.x > bound*2) particle.p.x = bound*2;
         if (particle.p.x < 0.0f) particle.p.x = 0.0f;
-        if (particle.p.z > bound) particle.p.z = bound;
         if (particle.p.z < 0.0f) particle.p.z = 0.0f;
+        if (particle.p.x > m_bounds.x) particle.p.x = m_bounds.x;
+        if (particle.p.z > m_bounds.z) particle.p.z = m_bounds.z;
 
         // Update velocity 
         particle.v = (particle.p - particle.p_old) / m_timestep;

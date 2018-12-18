@@ -66,6 +66,37 @@ void create_floor(std::vector<glm::vec4>& floor_vertices, std::vector<glm::uvec3
     floor_faces.push_back(glm::uvec3(2, 3, 0));
 }
 
+void create_bounds(std::vector<glm::vec4>& bounds_vertices, 
+        std::vector<glm::uvec3>& bounds_faces, std::shared_ptr<Config> c)
+{
+    float r = c->particle_radius;
+    glm::vec3 bounds(r*c->bounds_dim.x+r, r*c->bounds_dim.y+r, r*c->bounds_dim.z+r);
+
+    bounds_vertices.push_back(glm::vec4(0,        0, bounds.z, 1.0f));
+    bounds_vertices.push_back(glm::vec4(bounds.x, 0, bounds.z, 1.0f));
+    bounds_vertices.push_back(glm::vec4(bounds.x, 0, 0, 1.0f));
+    bounds_vertices.push_back(glm::vec4(0,        0, 0, 1.0f));
+    bounds_vertices.push_back(glm::vec4(0,        bounds.y, bounds.z, 1.0f));
+    bounds_vertices.push_back(glm::vec4(0,        bounds.y, 0, 1.0f));
+    bounds_vertices.push_back(glm::vec4(bounds.x, bounds.y, 0, 1.0f));
+    bounds_vertices.push_back(glm::vec4(bounds.x, bounds.y, 0, 1.0f));
+    bounds_vertices.push_back(glm::vec4(bounds.x, bounds.y, bounds.z, 1.0f));
+
+    //floor
+    bounds_faces.push_back(glm::uvec3(0, 1, 2));
+    bounds_faces.push_back(glm::uvec3(2, 3, 0));
+    // left
+    bounds_faces.push_back(glm::uvec3(0, 3, 4));
+    bounds_faces.push_back(glm::uvec3(4, 3, 5));
+    // back
+    bounds_faces.push_back(glm::uvec3(3, 2, 6));
+    bounds_faces.push_back(glm::uvec3(3, 6, 5));
+    // right 
+    bounds_faces.push_back(glm::uvec3(6, 2, 8));
+    bounds_faces.push_back(glm::uvec3(2, 1, 8));
+
+}
+
 static const GLfloat g_vertex_buffer_data[] = {
     -0.5f, -0.5f, 0.0f,
     0.5f, -0.5f, 0.0f,
@@ -139,7 +170,10 @@ int main(int, char**)
 
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, false);
-    glm::vec4 light_position = glm::vec4(0.0f, 15.0f, 0.0f, 1.0f);
+    glm::vec4 light_position = glm::vec4(
+            10*config->particle_radius, 
+            60*config->particle_radius, 
+            30*config->particle_radius, 1.0f);
     MatrixPointers mats;
 
     // FBOs
@@ -159,6 +193,10 @@ int main(int, char**)
     std::vector<glm::vec4> floor_vertices;
     std::vector<glm::uvec3> floor_faces;
     create_floor(floor_vertices, floor_faces);
+
+    std::vector<glm::vec4> bounds_vertices;
+    std::vector<glm::uvec3> bounds_faces;
+    create_bounds(bounds_vertices, bounds_faces, config);
 
     int nparticles = config->fluid_dim[0]*config->fluid_dim[1]*config->fluid_dim[2];
     std::vector<Particle> particles;
@@ -182,7 +220,7 @@ int main(int, char**)
 
 
     auto std_model = std::make_shared<ShaderUniform<const glm::mat4*>>("model", model_data);
-    auto floor_model = make_uniform("model", identity_mat);
+    auto identity_model = make_uniform("model", identity_mat);
     auto std_view = make_uniform("view", view_data);
     auto std_camera = make_uniform("camera_position", cam_data);
     auto std_proj = make_uniform("projection", proj_data);
@@ -202,11 +240,18 @@ int main(int, char**)
     RenderPass floor_pass(-1,
             floor_pass_input,
             { vertex_shader, geometry_shader, floor_fragment_shader},
-            { floor_model, std_view, std_proj, std_light },
+            { identity_model, std_view, std_proj, std_light },
             { "fragment_color" }
             );
-
-    // Particle pass
+    RenderDataInput bounds_pass_input;
+    bounds_pass_input.assign(0, "vertex_position", bounds_vertices.data(), bounds_vertices.size(), 4, GL_FLOAT, GL_FALSE);
+    bounds_pass_input.assignIndex(bounds_faces.data(), bounds_faces.size(), 3);
+    RenderPass bounds_pass(-1,
+            bounds_pass_input,
+            { vertex_shader, geometry_shader, bounds_fragment_shader},
+            { identity_model, std_view, std_proj, std_light },
+            { "fragment_color" }
+            );
     RenderDataInput particle_pass_input;
     particle_pass_input.assign(0, "vertex_position", g_vertex_buffer_data, sizeof(g_vertex_buffer_data), 3, GL_FLOAT, GL_FALSE);
     particle_pass_input.assign(1, "particle_position", nullptr, nparticles*3*sizeof(GLfloat), 3, GL_FLOAT, GL_FALSE);
@@ -274,6 +319,13 @@ int main(int, char**)
         {
             create_fluid_cube(particles, particle_position_data, particle_color_data, config);
             nparticles = config->fluid_dim[0]*config->fluid_dim[1]*config->fluid_dim[2];
+
+            // Update bounds
+            bounds_vertices.clear();
+            bounds_faces.clear();
+            create_bounds(bounds_vertices, bounds_faces, config);
+            bounds_pass.updateVBO(0, bounds_vertices.data(), bounds_vertices.size());
+
             gui.setReset(false);
         }
 
@@ -316,6 +368,9 @@ int main(int, char**)
         // Render floor 
         floor_pass.setup();
         CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, floor_faces.size() * 3, GL_UNSIGNED_INT, 0));
+
+        bounds_pass.setup();
+        CHECK_GL_ERROR(glDrawElements(GL_TRIANGLES, bounds_faces.size() * 3, GL_UNSIGNED_INT, 0));
 
         // FBO bind
         if (mode != RenderMode::Particle)
