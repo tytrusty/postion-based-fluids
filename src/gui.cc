@@ -53,6 +53,7 @@ void GUI::setup()
     ImGui::SliderFloat("Filter Sigma", &config->filter_sigma, 0.0001f, 30.0f);
     ImGui::InputInt3("Fluid Cube Dim", glm::value_ptr(config->fluid_dim));
     ImGui::InputInt3("Bounds Dim", glm::value_ptr(config->bounds_dim));
+    ImGui::InputFloat3("Fluid Cube Start", glm::value_ptr(config->fluid_start));
 
     ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
     if (ImGui::Button("Start/Stop")) pause_simulation_ ^= 1;

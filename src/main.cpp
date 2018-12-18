@@ -128,21 +128,22 @@ void create_fluid_cube(std::vector<Particle>& particles,
         position_data = new GLfloat[nparticles*3];
         color_data    = new GLubyte[nparticles*4];
     }
+    glm::vec3 start = c->particle_radius*c->fluid_start; 
+    glm::vec3 pos(0.0f);
 
-    glm::vec3 start = glm::vec3(0.0f, 0.0f, 0.0f); 
     float step = c->particle_radius;
     int n = 0;
     for (int i = 0; i < dim[0]; ++i)
     {
-        start.x = step*i;
+        pos.x = start.x + step*i;
         for (int j = 0; j < dim[1]; ++j)
         {
-            start.y = step*j;
+            pos.y = start.y + step*j;
             for (int k = 0; k < dim[2]; ++k)
             {
-                start.z = step*k;
+                pos.z = start.z + step*k;
 
-                particles[n].p = start;
+                particles[n].p = pos;
                 particles[n].v = glm::vec3(0.0f);
                 particles[n].r = 64;// rand() % 256;
                 particles[n].g = 124;// rand() % 256;
