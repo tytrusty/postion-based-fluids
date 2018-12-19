@@ -31,7 +31,7 @@ GUI::~GUI()
 
 void GUI::setup()
 {
-    ImGui::SetNextWindowSize(ImVec2(400,460), ImGuiSetCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(350,620), ImGuiSetCond_FirstUseEver);
     ImGui::SetNextWindowPos(ImVec2(20,20), ImGuiSetCond_FirstUseEver);
     ImGui::Begin("Simulation Parameters");
     ImGui::Combo("Render Mode", &current_mode_, render_modes_, 4);
